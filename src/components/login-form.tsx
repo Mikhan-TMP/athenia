@@ -73,8 +73,11 @@ export function LoginForm({ onShowSignUp }: LoginFormProps) {
                 handleToast("Login successful!", "success");
 
                 // Save cardNumber to local storage
-                const data = response.data as { cardNumber: string };
+                const data = response.data as { cardNumber: string, patron_id: number };
                 localStorage.setItem("cardNumber", data.cardNumber);
+                localStorage.setItem("patron_id", String(data.patron_id));
+
+                
                 setIsLoading(true);
 
                 // You can call another API here to fetch more user data
@@ -100,15 +103,21 @@ export function LoginForm({ onShowSignUp }: LoginFormProps) {
     };
 
     const handleGuestLogin = () => {
-        // Handle guest login with limited access
-        console.log("Guest login initiated")
+        handleToast("Continuing as guest. Limited access.", "info");
+        // in 2 seconds, direct to the chatwindow
+        setTimeout(() => {
+            // destroy the localstorage
+            localStorage.removeItem("cardNumber");
+            localStorage.removeItem("patron_id");
+            router.push('/chat-window');
+        }, 2000);
     }
     const handleForgotPassword = async (email: string) => {
         // Handle forgot password logic
         console.log("Password reset requested for:", email)
         setShowForgotPassword(false)
     }
-    const handleToast = (message: string, type: "success" | "error") => {
+    const handleToast = (message: string, type: "success" | "error" | "info") => {
         if (type === "success") {
             toast.success(message, {
                 position: "top-left",
@@ -120,6 +129,16 @@ export function LoginForm({ onShowSignUp }: LoginFormProps) {
                 progress: undefined,
             });
         } else if (type === "error") {
+            toast.error(message, {
+                position: "top-left",
+                autoClose: 5000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                progress: undefined,
+            });
+        } else if (type === "info") {
             toast.error(message, {
                 position: "top-left",
                 autoClose: 5000,

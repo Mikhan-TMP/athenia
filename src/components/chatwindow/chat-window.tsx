@@ -3,7 +3,8 @@
 import { useRef, useEffect, useState } from "react";
 import { PanelLeftIcon, SendIcon, User2Icon, MicIcon, Settings, CrossIcon, SidebarCloseIcon, CircleX } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-// Dummy Book Data
+import { ToastContainer, toast } from 'react-toastify';
+
 const books = [
     {
         title: "Book Title 1",
@@ -16,41 +17,141 @@ const books = [
 ];
 
 export default function ChatWindow({ onSidebarToggle, sidebarOpen }: { onSidebarToggle: () => void, sidebarOpen: boolean }) {
+    // Health Check
+    const [backendOnline, setBackendOnline] = useState<boolean>(true);
+
     const [currentPage, setCurrentPage] = useState(1);
     const booksPerPage = 1;
+
     const [message, setMessage] = useState("");
     const [loading, setLoading] = useState(false);
+    // API
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
     const kohaAPI = process.env.NEXT_PUBLIC_KOHA_URL;
     const kohaUsername = process.env.NEXT_PUBLIC_KOHA_USERNAME;
     const kohaPassword = process.env.NEXT_PUBLIC_KOHA_PASSWORD;
+    // BOOK DETAILS MODAL
     const [modalOpen, setModalOpen] = useState(false);
     const [modalData, setModalData] = useState<any>(null);
     const [modalLoading, setModalLoading] = useState(false);
     const [modalError, setModalError] = useState<string | null>(null);
+    // RESERVE BOOK MODAL
+    const [reserveModalOpen, setReserveModalOpen] = useState(false);
+    const [reserveData, setReserveData] = useState<{ patron_id: number; biblio_id: number } | null>(null);
+    const [holdModal, setHoldModal] =  useState<any>(null);
+    const [holdModalOpen, setHoldModalOpen] = useState(false);
+    const [holdModalLoading, setHoldModalLoading] = useState(false);
+    const [holdModalError, setHoldModalError] = useState<string | null>(null);
+    // Libraries
+    const [libraries, setLibraries] = useState<Array<{ library_id: string; name: string }>>([]);
+    const [selectedLibrary, setSelectedLibrary] = useState<string>("");
+    // ITEMS
+    const [items, setItems] = useState([]);
+    const [selectedItem, setSelectedItem] = useState<Item[]>([]);
+    const [availableCount, setAvailableCount] = useState(0);
+    // RECEIPT
+    const [receiptModalOpen, setReceiptModalOpen] = useState(false);
+    const [receiptData, setReceiptData] = useState<any>(null);
+
+    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+    const chatContainerRef = useRef<HTMLDivElement>(null);
+    const [booksPages, setBooksPages] = useState<{ [idx: number]: number }>({}); 
+
+    type Item = {
+        item_id: number;
+        [key: string]: any;
+    };
+
+
 
     type ChatMessage =
         | { type: "ai"; message: string }
         | { type: "user"; message: string }
-        | { type: "booksearch" | "recommendation" | "lookup"; 
+        | { type: "booksearch" | "recommendation" | "lookup" | "specific_book_search"; 
             message: string;
             books: Array<{
             title: string;
             author: string;
-            copyright_date : number;
+            year : number;
             publisher: string;
             isbn: string;
             quantity_available: number;
+            biblio_id: number;
         }> };
 
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
-    const chatContainerRef = useRef<HTMLDivElement>(null);
-    const [booksPages, setBooksPages] = useState<{ [idx: number]: number }>({}); // key: chat idx, value: page
+
     const reminders = {
         reminder1: "Try to be as specific as possible in your queries.",
         reminder2: "Search for books by title, author, or ISBN number.",
         reminder3: "Don't be afraid to ask for recommendations."
     }
+
+
+    const handleReserve = async () => {
+        if (!selectedLibrary){
+            handleToast("Please select a pickup library.", "error");
+            return
+        }
+        if (selectedItem.length === 0){
+            handleToast("No available items to reserve.", "error");
+            return
+        }
+
+        for (const item of selectedItem) {
+            try {
+                const url = `${kohaAPI}/api/v1/holds`;
+                const basicAuth = `Basic ${btoa(unescape(encodeURIComponent(`${kohaUsername}:${kohaPassword}`)))}`;
+
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                        "Authorization": basicAuth
+                    },
+                    body: JSON.stringify({
+                        patron_id: reserveData?.patron_id ?? 0,
+                        biblio_id: reserveData?.biblio_id ?? 0,
+                        item_id: item.item_id,
+                        pickup_library_id: selectedLibrary
+                    })
+                });
+
+                if (response.status === 200 || response.status === 201) {
+                    const receipt = await response.json();
+                    handleToast("Reservation successful!", "success");
+                    setReserveModalOpen(false);
+                    setSelectedLibrary("");
+                    setAvailableCount(0);
+                    setSelectedItem([]);
+                    setReceiptData({ ...receipt, patron_id: reserveData?.patron_id ?? 0 });
+                    setReceiptModalOpen(true);
+                    return;
+                } else if (response.status === 403) {
+                    try {
+                        const errorJson = await response.json();
+                        let reason = errorJson?.error || "Reservation failed due to restriction.";
+                        if (reason.includes("itemAlreadyOnHold")){
+                            reason = "You already have this item on hold.";
+                        }
+                        else if (reason.includes("tooManyHoldsForThisRecord")){
+                            reason = "You already have too many items on hold.";
+                        }
+                        handleToast(`Item ${item.item_id} could not be reserved: ${reason}`, "warning");
+                        continue;
+                    } catch (parseErr) {
+                        handleToast(`Item ${item.item_id} could not be reserved (403 Forbidden).`, "warning");
+                    }
+                } else {
+                    handleToast(`Item ${item.item_id} could not be reserved (status: ${response.status}).`, "warning");
+                    continue; 
+                }
+            } catch (error) {
+                console.error(`Network error for item ${item.item_id}:`, error);
+                continue; 
+            }
+        }
+    };
 
     const formatAnswer = (answer: string) => {
         const lines = answer.split("\n");
@@ -69,27 +170,35 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen }: { onSidebar
             );
         });
     };
-
-
     const handleSend = async () => {
         if (loading || !message.trim()) return;
-
+        if (!backendOnline) {
+            handleToast("The AI Chatbot is offline. Please try again later.", "error");
+            return;
+        }
         setChatHistory((prev) => [...prev, { type: "user", message }]);
         setLoading(true);
         setMessage("");
 
+
         try {
             const res = await fetch(`${backendUrl}/api/query/query_router`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ query: message })
+            headers: { 
+                "Content-Type": "application/json",
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ 
+                query: message,
+                sessionId: Date.now() / 1000 | 0,
+                cardNumber: localStorage.getItem("cardNumber")
+            })
             });
             const data = await res.json();
-            const formattedAnswer = formatAnswer(data.response[0].answer);
             const responseType = data?.response?.[0]?.type;
 
             // Handle response types
-            console.log(data);
+            // console.log(data);
 
             if (!data.response || data.response.length === 0) {
                 // GENERAL CHAT
@@ -100,7 +209,7 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen }: { onSidebar
                         message: data.answer || "Sorry, I couldn't find an answer to your question." }
                 ]);
             }else{
-            if (["booksearch", "recommendation", "lookup"].includes(responseType)) {
+            if (["booksearch", "recommendation", "lookup", "specific_book_search"].includes(responseType)) {
                 setChatHistory((prev) => [
                     ...prev,
                     {
@@ -122,6 +231,7 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen }: { onSidebar
 
             }
         } catch (err) {
+            // console.error(err);
             setChatHistory((prev) => [
             ...prev,
             { type: "ai", message: "Network error. Please try again." }
@@ -129,30 +239,18 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen }: { onSidebar
         }
         setLoading(false);
     };
-
     const totalPages = Math.ceil(books.length / booksPerPage);
-
-    const handleNext = () => {
-        if (currentPage < totalPages) setCurrentPage(currentPage + 1);
-    };
-
-    const handlePrev = () => {
-        if (currentPage > 1) setCurrentPage(currentPage - 1);
-    };
-
     const currentBooks = books.slice(
         (currentPage - 1) * booksPerPage,
         currentPage * booksPerPage
     );
-    async function handleMoreInfo(title: string) {
+    async function handleMoreInfo(biblio_id: number) {
         setModalLoading(true);
         setModalError(null);
         setModalOpen(true);
 
         try {
-            const queryJson = JSON.stringify({ "title": { "-like": `%${title}%` } });
-            const encodedQuery = encodeURIComponent(queryJson);
-            const url = `${kohaAPI}/api/v1/biblios?q=${encodedQuery}`;
+            const url = `${kohaAPI}/api/v1/biblios/${biblio_id}`;
             const basicAuth = `Basic ${btoa(unescape(encodeURIComponent(`${kohaUsername}:${kohaPassword}`)))}`;
             const res = await fetch(url, {
                 method: "GET",
@@ -162,16 +260,15 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen }: { onSidebar
                     'Accept': 'application/json'
                 }
             });
-
             if (!res.ok) throw new Error(`Error ${res.status}`);
             const data = await res.json();
-            console.log("Book details response:", data[0]);
+            // console.log("Book details response:", data);
 
             if (!data) {
                 setModalError("No details found for this book.");
                 setModalData(null);
             } else {
-                setModalData(data[0]); // show the first matching result
+                setModalData(data); 
             }
         } catch (err: any) {
             setModalError("Could not load book details.");
@@ -180,12 +277,128 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen }: { onSidebar
         setModalLoading(false);
     }
 
+    const handleToast = (message: string, type: "success" | "error" | "warning") => {
+        if (type === "success") {
+            toast.success(message, {
+                position: "top-center",
+                autoClose: 2000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                progress: undefined,
+            });
+        } else if (type === "error") {
+            toast.error(message, {
+                position: "top-center",
+                autoClose: 2000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                progress: undefined,
+            });
+        }
+        else if (type === "warning") {
+            toast.warning(message, {
+                position: "top-center",
+                autoClose: 5000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                progress: undefined,
+            });
+        }
+    }
+
+    // SCROLL
     useEffect(() => {
         if (chatContainerRef.current) {
             chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
         }
     }, [chatHistory, loading]);
+    // LIBRARY FETCHING
+    useEffect(() => {
+    const fetchLibraries = async () => {
+            try {
+                const url = `${kohaAPI}/api/v1/libraries`;
+                const basicAuth = `Basic ${btoa(unescape(encodeURIComponent(`${kohaUsername}:${kohaPassword}`)))}`;
+                const res = await fetch(url, {
+                    method: "GET",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": basicAuth,
+                        'Accept': 'application/json'
+                    }
+                });
+                if (!res.ok) throw new Error(`Error ${res.status}`);
+                const data = await res.json();
+                setLibraries(data);
+            } catch (err) {
+                console.error("Failed to fetch libraries", err);
+            }
+        };
 
+        fetchLibraries();
+    }, []);
+    // ITEMS FETCHING
+    useEffect(() => {
+        if (!reserveModalOpen) return; 
+        const fetchItems = async () => {
+            if (reserveModalOpen && reserveData?.biblio_id) {
+                try {
+                    const url = `${kohaAPI}/api/v1/biblios/${reserveData.biblio_id}/items`;
+                    const basicAuth = `Basic ${btoa(unescape(encodeURIComponent(`${kohaUsername}:${kohaPassword}`)))}`;
+                    
+                    const res = await fetch(url, {
+                        method: "GET",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Authorization": basicAuth,
+                            "Accept": "application/json"
+                        }
+                    });
+
+                    if (!res.ok) throw new Error(`Error ${res.status}`);
+                    
+                    const data = await res.json();
+                    // console.log(data);
+                    setItems(data);
+                    const available = data.filter((item: Item) => item.checked_out_date === null);
+                    setAvailableCount(available.length);
+                    // console.log(available.length);
+                    // console.log (available);
+                    setSelectedItem(available || null);
+                } catch (err) {
+                    console.error("Failed to fetch items:", err);
+                    setItems([]);
+                    setAvailableCount(0);
+                    setSelectedItem([]);
+                }
+            }
+        };
+        fetchItems();
+    }, [reserveModalOpen, reserveData?.biblio_id]);
+    // Backend Health Check
+    useEffect(() => {
+        const checkBackend = async () => {
+            try {
+                const res = await fetch(`${backendUrl}/health`, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' }
+                });
+                const data = await res.json();
+                setBackendOnline(data.status === "healthy");
+            } catch {
+                setBackendOnline(false);
+            }
+        };
+        checkBackend();
+        const interval = setInterval(checkBackend, 10000); 
+        return () => clearInterval(interval);
+    }, []);
+    
     return (
         <div className="flex shrink-0 items-center flex-col h-screen w-full">
             {/* Header */}
@@ -205,7 +418,13 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen }: { onSidebar
                         <h1 className="text-xl font-bold text-white ">
                             Athenia
                         </h1>
-                        <span className="text-xs text-orange-500">AI Chat Assistant</span>
+                        <span className="flex items-center gap-1 text-xs">
+                            <span className={`w-2 h-2 rounded-full ${backendOnline ? "bg-orange-500" : "bg-red-500"}`}></span>
+                            <span className={`${backendOnline ? "text-orange-500" : "text-red-500"}`}>
+                                {backendOnline ? "Online" : "Offline"}
+                            </span>
+
+                        </span>
                     </div>
                 </div>
                 <div className="flex items-center gap-4 px-4">
@@ -304,10 +523,11 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen }: { onSidebar
                         {currentBooks.map((book: {
                             title: string;
                             author: string;
-                            copyright_date: number;
+                            year: number;
                             publisher: string;
                             isbn: string;
                             quantity_available: number;
+                            biblio_id : number
                         }, bIdx: number) => (
 
                         <div key={bIdx} className="flex w-full justify-start text-wrap gap-3 p-4">
@@ -342,9 +562,8 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen }: { onSidebar
                                 </div>
                                 <div>
                                     <span className="block text-[rgb(255,255,255,0.5)]">Year</span>
-                                    <span className="font-semibold text-[rgb(255,255,255)]">{book.copyright_date}</span>
+                                    <span className="font-semibold text-[rgb(255,255,255)]">{book.year}</span>
                                 </div>
-  
                                 </div>
                                 <div className="border border-gray-200 rounded-md px-4 py-3 bg-gray-50 text-sm">
                                     <div className="flex justify-between gap-2">
@@ -356,14 +575,28 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen }: { onSidebar
                                         <span className="text-gray-500 w-1/2">ISBN</span>
                                         <span className="text-black w-1/2">{book.isbn}</span>
                                     </div>
+                                    <hr className="border-gray-300 w-full my-3" />
+                                    <div className="flex justify-between mt-1 gap-2">
+                                        <span className="text-gray-500 w-1/2">Bilbio ID</span>
+                                        <span className="text-black w-1/2">{book.biblio_id}</span>
+                                    </div>
                                 </div>
                                 <div className="flex gap-4">
-                                    <button className="cursor-pointer flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-md font-medium text-sm">
+                                    <button
+                                        className="cursor-pointer flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-md font-medium text-sm"
+                                        onClick={() => {
+                                            setReserveData({
+                                                patron_id: localStorage.getItem("patron_id") ? Number(localStorage.getItem("patron_id")) : 0,
+                                                biblio_id: book.biblio_id,                                                
+                                            });
+                                            setReserveModalOpen(true);
+                                        }}
+                                    >
                                         📚 Reserve Book
                                     </button>
                                     <button
                                         className="cursor-pointer flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-md font-medium text-sm"
-                                        onClick={() => handleMoreInfo(book.title)}
+                                        onClick={() => handleMoreInfo(book.biblio_id)}
                                         >
                                     🧾 More Info
                                     </button>
@@ -435,8 +668,6 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen }: { onSidebar
             )}
             </div>
 
-
-
             {/* Reminders */}
             {/* {reminders && (
                 <div className="w-full flex flex-wrap gap-3 sm:gap-4 md:gap-5 justify-center pt-3 px-1">
@@ -459,61 +690,13 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen }: { onSidebar
             )} */}
 
 
-
             {/* Chat Input */}
             <div className="w-full flex justify-center pb-8 pt-2">
-                <div className="
-                    flex items-center
-                    bg-[rgba(24,28,44,0.88)]
-                    shadow-lg
-                    rounded-2xl
-                    px-3
-                    py-2
-                    gap-2
-                    max-w-2xl
-                    border border-slate-800/40
-                    backdrop-blur-sm
-                    lg:w-full
-                    w-3/4
-                ">
-                    <input
-                        type="text"
-                        placeholder="Type a message..."
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                        className="
-                            flex-1
-                            bg-transparent
-                            border-none
-                            outline-none
-                            text-base
-                            px-3
-                            py-3
-                            text-white
-                            placeholder:text-slate-400
-                            font-medium
-                        "
-                        onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                        disabled={loading}
-                    />
+                <div className="flex items-center bg-[rgba(24,28,44,0.88)] shadow-lg rounded-2xl px-3 py-2 gap-2 max-w-2xl border border-slate-800/40 backdrop-blur-sm lg:w-full w-3/4">
+                    <input type="text" placeholder="Type a message..." value={message} onChange={(e) => setMessage(e.target.value)} className=" flex-1 bg-transparent border-none outline-none text-base px-3 py-3 text-white placeholder:text-slate-400 font-medium" onKeyDown={(e) => e.key === 'Enter' && handleSend()} disabled={loading} />
                     <AnimatePresence mode="wait" initial={false}>
                         {!message.trim() ? (
-                            <motion.button
-                                key="mic"
-                                className="
-                                    w-11 h-11
-                                    flex items-center justify-center
-                                    bg-white/10 hover:bg-blue-500/90
-                                    text-blue-400 hover:text-white
-                                    rounded-full
-                                    transition-all
-                                    shadow
-                                    focus:outline-none focus:ring-2 focus:ring-blue-400
-                                "
-                                onClick={() => {
-                                    // TODO: Add mic/voice recognition logic here
-                                    alert("Voice input coming soon!");
-                                }}
+                            <motion.button key="mic" className=" w-11 h-11 flex items-center justify-center bg-white/10 hover:bg-blue-500/90 text-blue-400 hover:text-white rounded-full transition-all shadow focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer " onClick={() => {handleToast("Feature coming soon!", "warning"); }}
                                 type="button"
                                 aria-label="Start voice input"
                                 initial={{ opacity: 0, scale: 0.7 }}
@@ -525,35 +708,14 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen }: { onSidebar
                                 <MicIcon style={{ width: 22, height: 22 }} />
                             </motion.button>
                         ) : (
-                            <motion.button
-                                key="send"
-                                className="
-                                    w-11 h-11
-                                    flex items-center justify-center
-                                    bg-gradient-to-br from-orange-500 via-orange-600 to-orange-500
-                                    hover:from-orange-600 hover:to-orange-600
-                                    text-white
-                                    rounded-full
-                                    transition-all
-                                    shadow
-                                    focus:outline-none focus:ring-2 focus:ring-orange-400
-                                "
-                                onClick={handleSend}
-                                type="button"
-                                aria-label="Send message"
-                                initial={{ opacity: 0, scale: 0.7 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.7 }}
-                                transition={{ duration: 0.22 }}
-                                disabled={loading}
-                            >
+                            <motion.button key="send" className=" w-11 h-11 flex items-center justify-center bg-gradient-to-br from-orange-500 via-orange-600 to-orange-500 hover:from-orange-600 hover:to-orange-600 text-white rounded-full transition-all shadow focus:outline-none focus:ring-2 focus:ring-orange-400 " onClick={handleSend} type="button" aria-label="Send message" initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.7 }} transition={{ duration: 0.22 }} disabled={loading} >
                                 <SendIcon style={{ width: 22, height: 22 }} />
                             </motion.button>
                         )}
                     </AnimatePresence>
                 </div>
             </div>
-
+            {/* Book Info Modal */}
             {modalOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" style={{ backdropFilter: "blur(2px)" }}>
                 <div className=" relative bg-gradient-to-br from-slate-800 via-blue-900/90 to-slate-700 p-8 rounded-2xl max-w-xl md-w-full p-5 shadow-2xl ring-1 ring-slate-700/50 text-white border border-orange-400/30">
@@ -684,6 +846,145 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen }: { onSidebar
                 </div>
             </div>
             )}
+            {/* Reservation Modal */}
+            {reserveModalOpen && reserveData && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                <div className="relative w-full max-w-lg bg-gradient-to-br from-slate-800 via-purple-900/90 to-slate-700 text-white rounded-2xl shadow-2xl ring-1 ring-purple-400/30 border border-purple-300/20 p-6 sm:p-8">
+                
+                {/* Close Button */}
+                <button
+                    onClick={() => setReserveModalOpen(false)}
+                    className="absolute top-4 right-4 text-slate-400 hover:text-purple-400 transition-colors cursor-pointer"
+                    aria-label="Close"
+                >
+                    <CircleX size={24} />
+                </button>
+
+                {/* Header */}
+                <h2 className="text-3xl font-semibold text-purple-300 mb-6">Reserve Book</h2>
+
+                {/* Patron & Biblio Info */}
+                <div className="space-y-3 mb-4 text-sm sm:text-base">
+                    <div className="flex justify-between">
+                    <span className="text-slate-400">Patron ID:</span>
+                    <span className="text-slate-100 font-medium">{reserveData.patron_id}</span>
+                    </div>
+                    <div className="flex justify-between">
+                    <span className="text-slate-400">Biblio ID:</span>
+                    <span className="text-slate-100 font-medium">{reserveData.biblio_id}</span>
+                    </div>
+                    <div className="flex justify-between">
+                    <span className="text-slate-400">Available Copies:</span>
+                    <span className="text-slate-100 font-medium">{availableCount}</span>
+                    </div>
+                </div>
+
+                {/* Library Selector */}
+                <div className="mb-6">
+                    <label htmlFor="library" className="block text-slate-400 mb-2 text-sm">
+                    Select Pickup Library:
+                    </label>
+                    <select
+                        id="library"
+                        value={selectedLibrary}
+                        onChange={(e) => setSelectedLibrary(e.target.value)}
+                        className="w-full bg-slate-900 text-white border border-purple-500 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    >
+                        <option value="">-- Select a Library --</option>
+                        {libraries.map((lib) => (
+                            <option key={lib.library_id} value={lib.library_id}>
+                            {lib.name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* Footer Buttons */}
+                <div className="flex justify-end gap-3">
+                    <button
+                    onClick={() => setReserveModalOpen(false)}
+                    className="px-4 py-2 rounded-md border border-slate-500 text-slate-300 hover:bg-slate-800 transition cursor-pointer"
+                    >
+                    Cancel
+                    </button>
+                    <button
+                        onClick={() => {handleReserve(); }}
+                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-md transition cursor-pointer"
+                    >
+                        Confirm Reserve
+                    </button>
+                </div>
+                </div>
+            </div>
+            )}
+
+            {/* Reservation receipt */}
+            
+            {receiptModalOpen && receiptData && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                    <div className="relative w-full max-w-md bg-gradient-to-br from-white via-gray-100 to-white rounded-2xl shadow-2xl border border-gray-300 p-8">
+                        {/* Close Button */}
+                        <button
+                            onClick={() => setReceiptModalOpen(false)}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-orange-500 transition-colors cursor-pointer"
+                            aria-label="Close"
+                        >
+                            <CircleX size={24} />
+                        </button>
+                        {/* Receipt Header */}
+                        <div className="text-center mb-6">
+                            <h2 className="text-2xl font-bold text-gray-800">Reservation Receipt</h2>
+                            <span className="block text-sm text-gray-500">Thank you for reserving!</span>
+                        </div>
+                        {/* Receipt Details */}
+                        <div className="space-y-4 text-base font-mono">
+                            <div className="flex justify-between">
+                                <span className="text-gray-500">Patron ID:</span>
+                                <span className="font-semibold text-gray-800">{receiptData.patron_id}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-500">Biblio ID:</span>
+                                <span className="font-semibold text-gray-800">{receiptData.biblio_id}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-500">Item ID:</span>
+                                <span className="font-semibold text-gray-800">{receiptData.item_id}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-500">Hold Date:</span>
+                                <span className="font-semibold text-gray-800">{receiptData.hold_date}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-500">Hold ID:</span>
+                                <span className="font-semibold text-gray-800">{receiptData.hold_id}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-500">Pickup Library:</span>
+                                <span className="font-bold text-orange-600 bg-orange-100 px-2 py-1 rounded">{receiptData.pickup_library_id}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-500">Priority:</span>
+                                <span className="font-bold text-purple-700 bg-purple-100 px-2 py-1 rounded">{receiptData.priority}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-500">Status:</span>
+                                <span className="font-semibold text-gray-800">{receiptData.status ?? "Pending"}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-500">Timestamp:</span>
+                                <span className="font-semibold text-gray-800">{receiptData.timestamp?.replace("T", " ").replace("+08:00", "")}</span>
+                            </div>
+                        </div>
+                        {/* Divider */}
+                        <div className="mt-6 border-t border-gray-300 pt-4 text-center text-xs text-gray-400">
+                            <span>Keep this receipt for your records.</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Toast */}
+            <ToastContainer
+            />
 
         </div>
     );
