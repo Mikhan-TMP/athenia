@@ -1,9 +1,10 @@
 "use client";
 
 import { useRef, useEffect, useState } from "react";
-import { PanelLeftIcon, SendIcon, User2Icon, MicIcon, Settings, CrossIcon, SidebarCloseIcon, CircleX } from "lucide-react";
+import { SettingsIcon, LogOutIcon, BadgeCheckIcon, PanelLeftIcon, SendIcon, User2Icon, MicIcon, Settings, CrossIcon, SidebarCloseIcon, CircleX } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ToastContainer, toast } from 'react-toastify';
+import { useRouter } from 'next/navigation';
 
 const books = [
     {
@@ -15,8 +16,24 @@ const books = [
         available: 3,
     }
 ];
+// type isGuestProps = {
+//   isGuest: (value: boolean) => void;
+// };
 
-export default function ChatWindow({ onSidebarToggle, sidebarOpen }: { onSidebarToggle: () => void, sidebarOpen: boolean }) {
+type ChatWindowProps = {
+    onSidebarToggle: () => void;
+    sidebarOpen: boolean;
+    // isGuest: boolean;
+};
+
+
+
+export default function ChatWindow({
+        onSidebarToggle,
+        sidebarOpen,
+        // isGuest,
+    }: ChatWindowProps) {
+
     // Health Check
     const [backendOnline, setBackendOnline] = useState<boolean>(true);
 
@@ -57,17 +74,50 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen }: { onSidebar
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const [booksPages, setBooksPages] = useState<{ [idx: number]: number }>({}); 
 
+    //Profile
+    const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [profileModalOpen, setProfileModalOpen] = useState(false);
+    
+    // Logout
+    const [logoutModalOpen, setLogoutModalOpen] = useState(false);
+
+
+    //Local State
+    const [patronId, setPatronId] = useState<string | null>(null);
+    const [cardNumber, setCardNumber] = useState<string | null>(null);
+    const [userName, setUserName] = useState<string | null>(null);
+
+
+    //Loading
+
+    const [loadingOpen, setIsLoadingOpen] = useState(false);
+
+    //Router
+    const router = useRouter();
+
+    // Item
     type Item = {
         item_id: number;
         [key: string]: any;
     };
 
+    //guest
+    const [isGuest, setIsGuest] = useState<boolean>(false);
+
+    useEffect(() => {
+        const storedPatronId = localStorage.getItem('patron_id');
+        const storedCardNumber = localStorage.getItem('cardNumber');
+        const storedUsername = localStorage.getItem('username');
+        const guestValue = localStorage.getItem("isGuest") === "true";
+        setIsGuest(guestValue);
+        setPatronId(storedPatronId);
+        setCardNumber(storedCardNumber);
+        setUserName(storedUsername);
+
+    }, []);
 
 
-    type ChatMessage =
-        | { type: "ai"; message: string }
-        | { type: "user"; message: string }
-        | { type: "booksearch" | "recommendation" | "lookup" | "specific_book_search"; 
+    type ChatMessage = | { type: "ai"; message: string } | { type: "user"; message: string } | { type: "booksearch" | "recommendation" | "lookup" | "specific_book_search"; 
             message: string;
             books: Array<{
             title: string;
@@ -94,6 +144,10 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen }: { onSidebar
         }
         if (selectedItem.length === 0){
             handleToast("No available items to reserve.", "error");
+            return
+        }
+        if (localStorage.getItem("patron_id") === null){
+            handleToast("Please log in to reserve a book.", "error");
             return
         }
 
@@ -181,6 +235,7 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen }: { onSidebar
         setMessage("");
 
 
+
         try {
             const res = await fetch(`${backendUrl}/api/query/query_router`, {
             method: "POST",
@@ -191,7 +246,7 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen }: { onSidebar
             body: JSON.stringify({ 
                 query: message,
                 sessionId: Date.now() / 1000 | 0,
-                cardNumber: localStorage.getItem("cardNumber")
+                cardNumber: cardNumber
             })
             });
             const data = await res.json();
@@ -312,6 +367,28 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen }: { onSidebar
         }
     }
 
+    const handleProfile = () => {
+        if (!localStorage.getItem('cardNumber') || !localStorage.getItem('patron_id')) {
+            handleToast("Not logged in. Please login first.", "error");
+        } else {
+            setIsLoadingOpen(true);
+            setTimeout(() => {
+                router.push("/profile");
+            }, 3000);
+        }
+    }
+
+    const handleLogOut = () => {
+        setLogoutModalOpen(true);
+    }
+
+    // DEBUG ONLY
+    // useEffect(() => {
+    //     console.log ("card number", localStorage.getItem('cardNumber'));
+    //     console.log ("patron id ", localStorage.getItem('patron_id'));
+    //     console.log ("is guest", isGuest)
+    //     console.log ("username", localStorage.getItem('username'));
+    // }) 
     // SCROLL
     useEffect(() => {
         if (chatContainerRef.current) {
@@ -320,7 +397,7 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen }: { onSidebar
     }, [chatHistory, loading]);
     // LIBRARY FETCHING
     useEffect(() => {
-    const fetchLibraries = async () => {
+        const fetchLibraries = async () => {
             try {
                 const url = `${kohaAPI}/api/v1/libraries`;
                 const basicAuth = `Basic ${btoa(unescape(encodeURIComponent(`${kohaUsername}:${kohaPassword}`)))}`;
@@ -391,6 +468,7 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen }: { onSidebar
                 const data = await res.json();
                 setBackendOnline(data.status === "healthy");
             } catch {
+                handleToast("Athenia is offline. Please refresh the page.", "error");
                 setBackendOnline(false);
             }
         };
@@ -402,7 +480,7 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen }: { onSidebar
     return (
         <div className="flex shrink-0 items-center flex-col h-screen w-full">
             {/* Header */}
-            <div className="flex w-full h-25 items-center justify-between select-none border-b border-white/10 px-4 bg-gradient-to-r from-slate-800/40 via-blue-900/30 to-slate-800/40 backdrop-blur-lg">
+            <div className="z-15 flex w-full h-25 items-center justify-between select-none border-b border-white/10 px-4 bg-gradient-to-r from-slate-800/40 via-blue-900/30 to-slate-800/40 backdrop-blur-lg">
                 <div className="flex justify-start items-center gap-2">
                     <PanelLeftIcon
                         style={{ color: "white", cursor: "pointer" }}
@@ -427,12 +505,64 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen }: { onSidebar
                         </span>
                     </div>
                 </div>
-                <div className="flex items-center gap-4 px-4">
-                    <img 
-                        src="/User.png"
-                        alt="User"
-                        className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30"
-                    />
+                <div className="relative">
+                    <div className="flex flex-col gap-1 items-center justify-center border-l border-white/50 h-5 mx-2 px-5">
+                        <img 
+                            src={isGuest ? "/Default_User.jpg" : "/User.jfif"}
+                            alt="User"
+                            className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30"
+                            onClick={() => setDropdownOpen(!dropdownOpen)}
+                        />
+                    </div>
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ duration: 0.2 }}
+                        className={`absolute right-4 top-10 w-64 rounded-xl shadow-lg backdrop-blur-xl bg-[rgba(26,30,44,1)] border border-white/10 text-white ${
+                            dropdownOpen ? '' : 'hidden'
+                        }`}
+                    >
+                    {/* Header */}
+                    <div className="px-5 py-4 border-b border-white/10">
+                        <div className="flex items-center gap-3">
+                        <BadgeCheckIcon className="w-5 h-5 text-green-400" />
+                        <div className="text-sm">
+                            <p className="text-gray-300">Signed in as</p>
+                            <p className="font-semibold text-white">{isGuest ? 'Guest' : userName || "N/A"}</p>
+                        </div>
+                        </div>
+                    </div>
+
+                    {/* Menu Items */}
+                    <div className="py-2 space-y-1">
+                        <a
+                            className="flex items-center gap-3 px-5 py-2 text-sm hover:bg-white/10 transition-colors cursor-pointer"
+                            onClick={() => {handleProfile(); setDropdownOpen(false);}}
+                        >
+                        <User2Icon className="w-4 h-4 text-white/80" />
+                        <span className="text-white r" >My Profile</span>
+                        </a>
+
+                        <a
+                        href="#"
+                        className="flex items-center gap-3 px-5 py-2 text-sm hover:bg-white/10 transition-colors"
+                        >
+                        <SettingsIcon className="w-4 h-4 text-white/80" />
+                        <span className="text-white">Settings</span>
+                        </a>
+
+                        <a
+                            onClick={() => {handleLogOut(); }}
+                            className="flex items-center gap-3 px-5 py-2 text-sm hover:bg-red-500/10 transition-colors cursor-pointer"
+                        >
+                        <LogOutIcon className="w-4 h-4 text-red-400" />
+                        <span className="text-red-300">Logout</span>
+                        </a>
+                    </div>
+                    </motion.div>
+
+
                 </div>
             </div>
 
@@ -475,7 +605,7 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen }: { onSidebar
                     </div>
                     <div>
                         <img 
-                            src="/User.png"
+                            src={isGuest ? "/Default_User.jpg" : "/User.jfif"}
                             alt="User"
                             className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30"
                         />
@@ -717,8 +847,8 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen }: { onSidebar
             </div>
             {/* Book Info Modal */}
             {modalOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" style={{ backdropFilter: "blur(2px)" }}>
-                <div className=" relative bg-gradient-to-br from-slate-800 via-blue-900/90 to-slate-700 p-8 rounded-2xl max-w-xl md-w-full p-5 shadow-2xl ring-1 ring-slate-700/50 text-white border border-orange-400/30">
+            <div className="p-5 fixed inset-0 z-50 flex items-center justify-center bg-black/30" style={{ backdropFilter: "blur(2px)" }}>
+                <div className=" relative bg-gradient-to-br from-slate-800 via-blue-900/90 to-slate-700 p-8 rounded-2xl max-w-xl md:max-w-2xl lg:max-w-3xl p-5 shadow-2xl ring-1 ring-slate-700/50 text-white border border-orange-400/30">
                     <button className="cursor-pointer absolute top-3 right-3 text-slate-400 hover:text-orange-500 text-xl font-bold"
                         onClick={() => setModalOpen(false)}
                     >
@@ -848,7 +978,7 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen }: { onSidebar
             )}
             {/* Reservation Modal */}
             {reserveModalOpen && reserveData && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+            <div className="fixed inset-0 z-50 p-5 flex items-center justify-center bg-black/40 backdrop-blur-sm">
                 <div className="relative w-full max-w-lg bg-gradient-to-br from-slate-800 via-purple-900/90 to-slate-700 text-white rounded-2xl shadow-2xl ring-1 ring-purple-400/30 border border-purple-300/20 p-6 sm:p-8">
                 
                 {/* Close Button */}
@@ -867,7 +997,9 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen }: { onSidebar
                 <div className="space-y-3 mb-4 text-sm sm:text-base">
                     <div className="flex justify-between">
                     <span className="text-slate-400">Patron ID:</span>
-                    <span className="text-slate-100 font-medium">{reserveData.patron_id}</span>
+                    <span className="text-slate-100 font-medium">
+                        {reserveData.patron_id ? reserveData.patron_id : "Please Login first."}
+                    </span>
                     </div>
                     <div className="flex justify-between">
                     <span className="text-slate-400">Biblio ID:</span>
@@ -875,7 +1007,11 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen }: { onSidebar
                     </div>
                     <div className="flex justify-between">
                     <span className="text-slate-400">Available Copies:</span>
-                    <span className="text-slate-100 font-medium">{availableCount}</span>
+                    <span className="text-slate-100 font-medium">
+                    {availableCount === 0 || availableCount === null
+                        ? "No available items to reserve."
+                        : availableCount}
+                    </span>
                     </div>
                 </div>
 
@@ -902,7 +1038,7 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen }: { onSidebar
                 {/* Footer Buttons */}
                 <div className="flex justify-end gap-3">
                     <button
-                    onClick={() => setReserveModalOpen(false)}
+                    onClick={() => {}}
                     className="px-4 py-2 rounded-md border border-slate-500 text-slate-300 hover:bg-slate-800 transition cursor-pointer"
                     >
                     Cancel
@@ -982,9 +1118,94 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen }: { onSidebar
                     </div>
                 </div>
             )}
+            {/* Logout Modal */}
+            {logoutModalOpen && (
+                <div className="border absolute h-screen bg-black/50 z-100 w-screen overflow-y-auto">
+                    <div
+                        className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0"
+                    >
+                        <div
+                        className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg"
+                        >
+                        <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                            <div className="sm:flex sm:items-start">
+                            <div
+                                className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10"
+                            >
+                                <svg
+                                aria-hidden="true"
+                                stroke="currentColor"
+                                stroke-width="1.5"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                className="h-6 w-6 text-red-600"
+                                >
+                                <path
+                                    d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+                                    stroke-linejoin="round"
+                                    stroke-linecap="round"
+                                ></path>
+                                </svg>
+                            </div>
+                            <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
+                                <h3
+                                id="modal-title"
+                                className="text-base font-semibold leading-6 text-gray-900"
+                                >
+                                Logout account
+                                </h3>
+                                <div className="mt-2">
+                                <p className="text-sm text-gray-500">
+                                    Are you sure you want to logout your account? All of your
+                                    unsaved data will be removed. This action cannot be undone.
+                                </p>
+                                </div>
+                            </div>
+                            </div>
+                        </div>
+                        <div className="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                            <button
+                                onClick={() => {
+                                    setLogoutModalOpen(false);
+                                    setIsLoadingOpen(true);
+                                    setTimeout(() => {
+                                        localStorage.clear();
+                                        // render loading
+                                        router.push("/");
+                                    }, 5000);
+                                }}
+                                className="cursor-pointer inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto"
+                                type="button"
+                                >
+                                Logout
+                            </button>
+                            <button
+                            onClick={() => {
+                                    setLogoutModalOpen(false);
+                                }}
+                            className="cursor-pointer mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
+                            type="button"
+                            >
+                            Cancel
+                            </button>
+                        </div>
+                        </div>
+                    </div>
+                    </div>
+
+            )}
+            {loadingOpen && (
+                <div className="z-999 absolute flex-col gap-4 w-full flex items-center justify-center bg-black/50 h-screen">
+                    <div
+                        className="w-20 h-20 border-4 border-transparent text-blue-400 text-4xl animate-spin flex items-center justify-center border-t-blue-400 rounded-full"
+                    >
+                        <div className="w-16 h-16 border-4 border-transparent text-red-400 text-2xl animate-spin flex items-center justify-center border-t-red-400 rounded-full"
+                        ></div>
+                    </div>
+                </div>
+            )}
             {/* Toast */}
-            <ToastContainer
-            />
+            <ToastContainer/>
 
         </div>
     );

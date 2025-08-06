@@ -8,10 +8,12 @@ import { ToastContainer, toast } from 'react-toastify';
 import axios from "axios";
 import { useRouter } from 'next/navigation';
 
-interface LoginFormProps {
-    onShowSignUp: () => void
-}
-export function LoginForm({ onShowSignUp }: LoginFormProps) {
+
+type guestProps = {
+  setIsGuest: (value: boolean) => void;
+};
+
+export function LoginForm({ setIsGuest }: guestProps) {
     const [cardNumber, setCardNumber] = useState("")
     const [password, setPassword] = useState("")
     const [showPassword, setShowPassword] = useState(false)
@@ -73,15 +75,16 @@ export function LoginForm({ onShowSignUp }: LoginFormProps) {
                 handleToast("Login successful!", "success");
 
                 // Save cardNumber to local storage
-                const data = response.data as { cardNumber: string, patron_id: number };
-                localStorage.setItem("cardNumber", data.cardNumber);
+                const data = response.data as { cardnumber: string, patron_id: number, userid: string };
+                localStorage.setItem("cardNumber", data.cardnumber);
                 localStorage.setItem("patron_id", String(data.patron_id));
+                localStorage.setItem("username", String(data.userid));
+                localStorage.setItem("isGuest", "false");
+
 
                 
                 setIsLoading(true);
 
-                // You can call another API here to fetch more user data
-                // await fetchUserDetails();
 
                 //direct to the chatwindow
                 router.push('/chat-window');
@@ -109,6 +112,9 @@ export function LoginForm({ onShowSignUp }: LoginFormProps) {
             // destroy the localstorage
             localStorage.removeItem("cardNumber");
             localStorage.removeItem("patron_id");
+            localStorage.setItem("isGuest", "true");
+            // global variable isGuest is set to true
+            setIsGuest(true);
             router.push('/chat-window');
         }, 2000);
     }
@@ -284,7 +290,7 @@ export function LoginForm({ onShowSignUp }: LoginFormProps) {
                         <span className="text-blue-200 text-sm">{"Don't have a library card? "}</span>
                         <button
                         type="button"
-                        onClick={onShowSignUp}
+                        // onClick={}
                         className="cursor-pointer text-orange-400 hover:text-orange-300 text-sm font-medium transition-colors"
                         >
                         Get one here
@@ -323,105 +329,8 @@ export function LoginForm({ onShowSignUp }: LoginFormProps) {
             <span>Your library data is protected with enterprise-grade security</span>
             </div>
         </div>
-        <ToastContainer
-            position="top-right"
-            autoClose={5000}
-            hideProgressBar={false}
-            newestOnTop={false}
-            closeOnClick={false}
-            rtl={false}
-            pauseOnFocusLoss
-            draggable
-            pauseOnHover
-            theme="light"
-        />
+        <ToastContainer/>
     </div>
-    
     )
-
-    
 }
 
-// function ForgotPasswordForm({
-//     onSubmit,
-//     onCancel,
-// }: {
-//     onSubmit: (email: string) => void
-//     onCancel: () => void
-// }) {
-//     const [email, setEmail] = useState("")
-//     const [isLoading, setIsLoading] = useState(false)
-
-// const handleSubmit = async (e: React.FormEvent) => {
-//     e.preventDefault()
-//     setIsLoading(true)
-//     await new Promise((resolve) => setTimeout(resolve, 1500))
-//     onSubmit(email)
-//     setIsLoading(false)
-// }
-// const [cardNumber, setCardNumber] = useState("")
-
-
-// return (
-//     <div className="space-y-4">
-//     <div className="text-center">
-//         <h3 className="text-white font-semibold mb-2">Reset Your Password</h3>
-//         <p className="text-blue-200 text-sm">Enter your email address and we'll send you a reset link</p>
-//     </div>
-
-//     <form onSubmit={handleSubmit} className="space-y-4">
-//         <div className="relative">
-//             <CreditCard className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-blue-300" />
-//             <label htmlFor="cardNumber" className="text-white font-medium flex items-center gap-2 text-sm leading-none font-medium select-none group-data-[disabled=true]:pointer-events-none group-data-[disabled=true]:opacity-50 peer-disabled:cursor-not-allowed peer-disabled:opacity-50">
-//                 Card Number
-//             </label>
-//             <input
-//             id="cardNumber"
-//             type="text"
-//             placeholder="Enter your card number"
-//             value={cardNumber}
-//             onChange={(e) => setCardNumber(e.target.value)}
-//             className={`text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input flex h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm
-//                 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]
-//                 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive
-//                 pl-10 bg-white/10 border-white/20 text-white placeholder:text-blue-300 focus:border-orange-400 focus:ring-orange-400/20 ${
-//                 "border-red-400 focus:border-red-400 focus:ring-red-400/20"
-//             }`}
-//             required
-//         />
-//         </div>
-
-//         <div className="flex space-x-3">
-//         <button
-//             type="button"
-//             onClick={onCancel}
-//             className="
-//                 sm:h-8 sm:rounded-md sm:gap-1.5 sm:px-3 sm:has-[>svg]:px-2.5
-//                 lg:h-10 lg:rounded-md px-6 lg:has-[>svg]:px-4
-//                 cursor-pointer transition-all duration-200
-//                 h-9 px-4 py-2 has-[>svg]:px-3
-//                 border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50
-//                 w-50 border-white/20 text-white hover:bg-white/10 hover:border-white/30 transition-all duration-200 bg-transparent"
-//         >
-//             Cancel
-//         </button>
-//         <button
-//             type="submit"
-//             disabled={isLoading}
-//             className={`
-//                 sm:h-8 sm:rounded-md sm:gap-1.5 sm:px-3 sm:has-[>svg]:px-2.5
-//                 lg:h-10 lg:rounded-md px-6 lg:has-[>svg]:px-4
-//                 cursor-pointer transition-all duration-200
-//                 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive
-//                 w-50 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold py-3 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50
-//                 bg-primary text-primary-foreground shadow-xs hover:bg-primary/90
-//                 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
-//                 `}
-//             >
-//             {isLoading ? "Sending..." : "Send Reset Link"}
-//         </button>
-//         </div>
-//     </form>
-//     </div>
-//     )
-// }

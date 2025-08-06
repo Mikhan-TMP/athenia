@@ -4,9 +4,12 @@ import ChatWindow  from "@/components/chatwindow/chat-window";
 import { AnimatedBackground } from "@/components/animated-background";
 import { useState, useEffect } from "react";
 
-export default function ChatWindowPage() {
+
+export default function ChatWindowPage( ) {
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [isMobile, setIsMobile] = useState(false);
+    const [isGuest, setIsGuest] = useState(false);
+
 
     // Detect screen size for overlay logic
     useEffect(() => {
@@ -44,6 +47,7 @@ export default function ChatWindowPage() {
             <div className="flex-1 h-screen w-full min-h-screen relative overflow-hidden ">
                 <AnimatedBackground  />
                 <ChatWindow
+                    // isGuest={isGuest}
                     onSidebarToggle={() => setSidebarOpen((open) => !open)}
                     sidebarOpen={sidebarOpen}
                 />

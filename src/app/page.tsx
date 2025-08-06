@@ -6,14 +6,15 @@ import { LoginForm } from "@/components/login-form";
 
 import { useState } from "react";
 export default function Home() {
-  const [showSignUpModal, setShowSignUpModal] = useState(false)
+  const [isGuest, setIsGuest] = useState(false);
+
   return (
   <div className="min-h-screen relative overflow-hidden">
       <AnimatedBackground />
 
       <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
         <div className="w-full max-w-md">
-          <LoginForm onShowSignUp={() => setShowSignUpModal(true)} />
+          <LoginForm setIsGuest={setIsGuest} />
         </div>
       </div>
 

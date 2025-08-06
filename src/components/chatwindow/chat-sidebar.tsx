@@ -22,7 +22,7 @@ export default function ChatSidebar({ onSidebarToggle, sidebarOpen }: { onSideba
                     />
                 </div>
                 {/* NEW CHAT */}
-                <div className="p-4 bg-gradient-to-r from-slate-900/50 to-slate-800/50 bg-[rgba(26,30,44,1)]">
+                <div className="p-4 bg-[rgba(26,30,44,1)]">
                     <button className="cursor-pointer rounded-lg flex justify-center items-center w-full h-12 w-full gap-2 bg-gradient-to-r from-orange-500 via-orange-600 to-orange-500 hover:from-orange-600 hover:via-orange-700 hover:to-orange-600 text-white border-none shadow-lg hover:shadow-orange-500/25 transition-all duration-300">
                     <MessageSquarePlus className="h-4 w-4" />
                     New Chat
