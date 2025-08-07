@@ -1,5 +1,5 @@
 'use client';
-import { CircleAlert, BookAIcon, BookOpen, ArrowLeft, Pencil } from "lucide-react";
+import { CircleAlert, BookAIcon, BookOpen, ArrowLeft, Pencil, Book, BookAlert, BookOpenText, CircleAlertIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { ToastContainer, toast } from 'react-toastify';
@@ -24,8 +24,16 @@ export default function Profile() {
     const router = useRouter();
     const [userName, setUserName] = useState<string | null>(null);
 
+    // MODALS
+    const [bookModal , setShowBookModal] = useState(false);
+    const [selectedBook, setSelectedBook] = useState<any>(null);
+    const [cancelModal, setCancelModal] = useState(false);
+    const [returnModal, setReturnModal] = useState(false);
+    const [renewModal, setRenewModal] = useState(false);
 
-
+    // renewal
+    const [renew, setRenew] = useState<any>(null);
+    // FETCH THE PATRON FROM LOCAL STORAGE
     useEffect(() => {
         const storedPatronId = localStorage.getItem('patron_id');
         const storedCardNumber = localStorage.getItem('cardNumber');
@@ -34,155 +42,161 @@ export default function Profile() {
         setCardNumber(storedCardNumber);
         setUserName(storedUsername);
 
+        if (!storedPatronId) {
+            handleToast("Profile Unavailable. Please login first.", "error");
+            setTimeout(() => {
+                router.push("/chat-window");
+            })
+        }
     }, []);
+
 
 
     // Fetch profile details on mount
     useEffect(() => {
-        console.log(patronId);
-            const fetchProfile = async () => {
-                try {
-                    const url = `${kohaAPI}/api/v1/patrons/${patronId}`;
-                    // console.log('url', url);
-                    const basicAuth = `Basic ${btoa(unescape(encodeURIComponent(`${kohaUsername}:${kohaPassword}`)))}`;
-                    const res = await fetch(url, {
-                        headers: {
-                            "Authorization": basicAuth,
-                            "Content-Type": "application/json",
-                            "Accept": "application/json"
-                        },
-                    });
+        const fetchProfile = async () => {
+            try {
+                const url = `${kohaAPI}/api/v1/patrons/${patronId}`;
+                // console.log('url', url);
+                const basicAuth = `Basic ${btoa(unescape(encodeURIComponent(`${kohaUsername}:${kohaPassword}`)))}`;
+                const res = await fetch(url, {
+                    headers: {
+                        "Authorization": basicAuth,
+                        "Content-Type": "application/json",
+                        "Accept": "application/json"
+                    },
+                });
 
-                    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-                    const data = await res.json();
-                    // console.log(data);
-                    setProfile(data);
-                } catch (err) {
-                    console.error("Failed to fetch profile:", err);
-                }
-            };
-        
-            const fetchHolds = async () => {
-                try {
-                    const url = `${kohaAPI}/api/v1/patrons/${patronId}/holds`;
-                    const basicAuth = `Basic ${btoa(unescape(encodeURIComponent(`${kohaUsername}:${kohaPassword}`)))}`;
-                    const res = await fetch(url, {
-                        headers: {
-                            "Authorization": basicAuth,
-                            "Content-Type": "application/json",
-                            "Accept": "application/json"
-                        },
-                    });
-                    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-                    const data = await res.json();
-                    setHolds(data);
-                    console.log("holds", data);
-
-                    // Fetch all book details in parallel using type "biblio"
-                    const bookDetails = await Promise.all(
-                        data.map(async (hold: any) => {
-                            return await fetchBookDetails(hold.biblio_id, "biblio");
-                        })
-                    );
-                    setBooks(bookDetails.filter(Boolean));
-                } catch (err) {
-                    console.error("Failed to fetch patron holds:", err);
-                }
-            };
-
-            const fetchUserCheckouts = async () => {
-                try {
-                    const url = `${kohaAPI}/api/v1/patrons/${patronId}/checkouts`;
-                    const basicAuth = `Basic ${btoa(unescape(encodeURIComponent(`${kohaUsername}:${kohaPassword}`)))}`;
-                    const res = await fetch(url, {
-                        headers: {
-                            "Authorization": basicAuth,
-                            "Content-Type": "application/json",
-                            "Accept": "application/json"
-                        },
-                    });
-
-                    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-                    const data = await res.json();
-                    console.log("checkouts", data);
-                    setBorrowedBooks(data);
-
-                    const today = new Date();
-                    const overdues = data.filter((checkout: any) => {
-                        const dueDate = new Date(checkout.due_date);
-                        return dueDate < today;
-                    });
-                    setOverDue(overdues);
-                    console.log("overdues", overdues);
-
-                    // Fetch all book details in parallel using type "item"
-                    const bookDetails = await Promise.all(
-                        data.map(async (checkout: any) => {
-                            return await fetchBookDetails(checkout.item_id, "item");
-                        })
-                    );
-                    setBorrowedBookDetails(bookDetails.filter(Boolean)); 
-
-                    //fetch all book details in parallel using type "item" where due_date is past today's date.
-                    const overdueBookDetails = await Promise.all(
-                        overdues.map(async (checkout: any) => {
-                            return await fetchBookDetails(checkout.item_id, "item");
-                        })
-                    );
-                    setOverdueBookDetails(overdueBookDetails.filter(Boolean))
-                } catch (err) {
-                    console.error("Failed to fetch patron checkouts:", err);
-                }
-            };
-
-            const fetchBookDetails = async (id: number, type: "biblio" | "item") => {
-                try {
-                    let biblioId = id;
-
-                    // If it's an item_id, fetch item details first to get the biblio_id
-                    if (type === "item") {
-                        const itemUrl = `${kohaAPI}/api/v1/items/${id}`;
-                        const basicAuth = `Basic ${btoa(unescape(encodeURIComponent(`${kohaUsername}:${kohaPassword}`)))}`;
-                        const itemRes = await fetch(itemUrl, {
-                            headers: {
-                                "Authorization": basicAuth,
-                                "Content-Type": "application/json",
-                                "Accept": "application/json"
-                            },
-                        });
-
-                        if (!itemRes.ok) throw new Error(`Item fetch error! status: ${itemRes.status}`);
-                        const itemData = await itemRes.json();
-                        biblioId = itemData.biblio_id; 
-                    }
-
-                    const biblioUrl = `${kohaAPI}/api/v1/biblios/${biblioId}`;
-                    const basicAuth = `Basic ${btoa(unescape(encodeURIComponent(`${kohaUsername}:${kohaPassword}`)))}`;
-                    const biblioRes = await fetch(biblioUrl, {
-                        headers: {
-                            "Authorization": basicAuth,
-                            "Content-Type": "application/json",
-                            "Accept": "application/json"
-                        },
-                    });
-
-
-                    if (!biblioRes.ok) throw new Error(`Biblio fetch error! status: ${biblioRes.status}`);
-                    const biblioData = await biblioRes.json();
-                    return biblioData;
-
-                } catch (err) {
-                    console.error("Failed to fetch book details:", err);
-                    return null;
-                }
-            };
-
-
-            if (patronId) {
-                fetchProfile();
-                fetchHolds();
-                fetchUserCheckouts();
+                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+                const data = await res.json();
+                // console.log(data);
+                setProfile(data);
+            } catch (err) {
+                console.error("Failed to fetch profile:", err);
             }
+        };
+    
+        const fetchHolds = async () => {
+            try {
+                const url = `${kohaAPI}/api/v1/patrons/${patronId}/holds`;
+                const basicAuth = `Basic ${btoa(unescape(encodeURIComponent(`${kohaUsername}:${kohaPassword}`)))}`;
+                const res = await fetch(url, {
+                    headers: {
+                        "Authorization": basicAuth,
+                        "Content-Type": "application/json",
+                        "Accept": "application/json"
+                    },
+                });
+                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+                const data = await res.json();
+                setHolds(data);
+                console.log("holds", data);
+
+                // Fetch all book details in parallel using type "biblio"
+                const bookDetails = await Promise.all(
+                    data.map(async (hold: any) => {
+                        return await fetchBookDetails(hold.biblio_id, "biblio");
+                    })
+                );
+                setBooks(bookDetails.filter(Boolean));
+            } catch (err) {
+                console.error("Failed to fetch patron holds:", err);
+            }
+        };
+
+        const fetchUserCheckouts = async () => {
+            try {
+                const url = `${kohaAPI}/api/v1/patrons/${patronId}/checkouts`;
+                const basicAuth = `Basic ${btoa(unescape(encodeURIComponent(`${kohaUsername}:${kohaPassword}`)))}`;
+                const res = await fetch(url, {
+                    headers: {
+                        "Authorization": basicAuth,
+                        "Content-Type": "application/json",
+                        "Accept": "application/json"
+                    },
+                });
+
+                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+                const data = await res.json();
+                console.log("checkouts", data);
+                setBorrowedBooks(data);
+
+                const today = new Date();
+                const overdues = data.filter((checkout: any) => {
+                    const dueDate = new Date(checkout.due_date);
+                    return dueDate < today;
+                });
+                setOverDue(overdues);
+                console.log("overdues", overdues);
+
+                // Fetch all book details in parallel using type "item"
+                const bookDetails = await Promise.all(
+                    data.map(async (checkout: any) => {
+                        return await fetchBookDetails(checkout.item_id, "item");
+                    })
+                );
+                setBorrowedBookDetails(bookDetails.filter(Boolean)); 
+
+                //fetch all book details in parallel using type "item" where due_date is past today's date.
+                const overdueBookDetails = await Promise.all(
+                    overdues.map(async (checkout: any) => {
+                        return await fetchBookDetails(checkout.item_id, "item");
+                    })
+                );
+                setOverdueBookDetails(overdueBookDetails.filter(Boolean))
+            } catch (err) {
+                console.error("Failed to fetch patron checkouts:", err);
+            }
+        };
+
+        const fetchBookDetails = async (id: number, type: "biblio" | "item") => {
+            try {
+                let biblioId = id;
+
+                // If it's an item_id, fetch item details first to get the biblio_id
+                if (type === "item") {
+                    const itemUrl = `${kohaAPI}/api/v1/items/${id}`;
+                    const basicAuth = `Basic ${btoa(unescape(encodeURIComponent(`${kohaUsername}:${kohaPassword}`)))}`;
+                    const itemRes = await fetch(itemUrl, {
+                        headers: {
+                            "Authorization": basicAuth,
+                            "Content-Type": "application/json",
+                            "Accept": "application/json"
+                        },
+                    });
+
+                    if (!itemRes.ok) throw new Error(`Item fetch error! status: ${itemRes.status}`);
+                    const itemData = await itemRes.json();
+                    biblioId = itemData.biblio_id; 
+                }
+
+                const biblioUrl = `${kohaAPI}/api/v1/biblios/${biblioId}`;
+                const basicAuth = `Basic ${btoa(unescape(encodeURIComponent(`${kohaUsername}:${kohaPassword}`)))}`;
+                const biblioRes = await fetch(biblioUrl, {
+                    headers: {
+                        "Authorization": basicAuth,
+                        "Content-Type": "application/json",
+                        "Accept": "application/json"
+                    },
+                });
+
+
+                if (!biblioRes.ok) throw new Error(`Biblio fetch error! status: ${biblioRes.status}`);
+                const biblioData = await biblioRes.json();
+                return biblioData;
+
+            } catch (err) {
+                console.error("Failed to fetch book details:", err);
+                return null;
+            }
+        };
+
+
+        if (patronId) {
+            fetchProfile();
+            fetchHolds();
+            fetchUserCheckouts();
+        }
     }, [patronId]);
 
 
@@ -220,6 +234,75 @@ export default function Profile() {
             });
         }
     }
+
+    const handleCancelHold = async (holdId: number) => {
+        try {
+            const url = `${kohaAPI}/api/v1/holds/${holdId}`;
+            const basicAuth = `Basic ${btoa(unescape(encodeURIComponent(`${kohaUsername}:${kohaPassword}`)))}`;
+            const res = await fetch(url, {
+                method: "DELETE",
+                headers: {
+                    "Authorization": basicAuth,
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+            });
+
+            if (res.ok) {
+                handleToast("Hold cancelled successfully.", "success");
+                setCancelModal(false);
+                // reload the page for 2seconds before refreshing
+                // setTimeout(()=> {
+                window.location.reload();
+                // }, 2000)
+            } else {
+                handleToast("Failed to cancel hold.", "error");
+            }
+        } catch (err) {
+            console.error("Failed to cancel hold:", err);
+        }
+    };
+
+    const handleRenewHold = async (checkout: any) => {
+        console.log(checkout)
+        console.log(checkout.borrowedBooks.checkout_id);
+        try {
+            let checkoutId = checkout.borrowedBooks.checkout_id
+            const url = `${kohaAPI}/api/v1/checkouts/${checkoutId}/renewals`;
+            const basicAuth = `Basic ${btoa(unescape(encodeURIComponent(`${kohaUsername}:${kohaPassword}`)))}`;
+            
+            const res = await fetch(url, {
+                method: "POST",
+                headers: {
+                    "Authorization": basicAuth,
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                body: JSON.stringify({
+                    "checkout_id": checkoutId
+                })
+            });
+
+            if (res.ok) {
+                handleToast("Book renewed sucessfully.", "success");
+                setRenewModal(false);
+                window.location.reload();
+            } else {
+                handleToast("Failed to renew the book. Please contact support.", "error");
+                setRenewModal(false);
+            }
+
+        }catch{
+
+        }
+    }
+
+    const fetchRenewDetails = async (checkout: any) => {
+        setRenew(checkout);
+        console.log(checkout);
+    }
+
+
     return (
         <motion.div
             initial={{ opacity: 0 }}
@@ -265,9 +348,9 @@ export default function Profile() {
                     <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-slate-800 via-slate-900 to-slate-800 shadow-xl p-6 space-y-5">
                         <div className="flex flex-col items-center text-center space-y-3">
                         <img
-                            src="/User.jfif"
+                            src="/Malee.jfif"
                             alt="User Profile"
-                            className="w-28 h-28 rounded-full ring-2 ring-orange-400 shadow-md object-cover hover:scale-105 transition-transform duration-200"
+                            className="w-28 h-28 rounded-full ring-2 ring-orange-400 shadow-md object-cover hover:scale-105 transition-transform duration-200 cursor-pointer"
                         />
                         <div>
                             <h2 className="text-2xl font-bold">{profile.preferred_name ?? "N/A"} {profile.surname ?? ""}</h2>
@@ -344,10 +427,22 @@ export default function Profile() {
                                     key={index}
                                     title={`📚 ${book.title ?? "Untitled"}`}
                                     author={book.author ?? "Unknown"}
-                                    due={new Date(borrowedBooks[index]?.due_date ?? "N/A").toLocaleString("en-US", { timeZone: "Asia/Singapore", year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                    due={new Date(borrowedBooks[index]?.due_date ?? "N/A").toLocaleString("en-US", { timeZone: "Asia/Singapore", year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                     actions={[
-                                        { label: "Renew", style: "blue" },
-                                        { label: "Return", style: "red" }
+                                        { label: "Renew", style: "orange", 
+                                            onClick: () => {
+                                                setSelectedBook({ ...borrowed, borrowedBooks: borrowedBooks[index] });
+                                                fetchRenewDetails(borrowedBooks[index]);
+                                                setRenewModal(true);
+                                            } 
+                                        },
+                                        { label: "Return", style: "red" ,
+
+                                            onClick: () => {
+                                                // setSelectedBook({ ...borrowed, hold: holds[index] }); 
+                                                setReturnModal(true);
+                                            } 
+                                        }
                                     ]}
                                 />
                             ))
@@ -370,11 +465,26 @@ export default function Profile() {
                                     key={index}
                                     title={`📚 ${book.title ?? "Untitled"}`}
                                     author={book.author ?? "Unknown"}
-                                    due={holds[index]?.expiration_date ?? "N/A"} 
+                                    due={holds[index]?.expiration_date ? new Date(holds[index].expiration_date).toLocaleString("en-US", { year: '2-digit', month: '2-digit', day: '2-digit' }) : "N/A"}
                                     pickup
                                     actions={[
-                                        { label: "More Info", style: "blue" },
-                                        { label: "Cancel", style: "red" }
+                                        { 
+                                            label: "More Info", 
+                                            style: "green", 
+                                            onClick: () => {
+                                                setSelectedBook({ ...book, hold: holds[index] }); 
+                                                setShowBookModal(true);
+                                            } 
+                                        },
+                                        { 
+                                            label: "Cancel", 
+                                            style: "red", 
+                                            onClick: () => {
+                                                setSelectedBook({ ...book, hold: holds[index] });
+                                                setCancelModal(true); 
+                                                }
+                                            }
+                                            ,
                                     ]}
                                 />
                             ))
@@ -385,6 +495,202 @@ export default function Profile() {
 
                 </motion.div>
             </div>
+            )}
+
+            {/* Book Modal */}
+            {bookModal && selectedBook && (
+                <Modal
+                    book={selectedBook}
+                    onClose={() => {
+                        setSelectedBook(null);
+                        setShowBookModal(false);
+                    }}
+                />
+            )}
+            {/* CancelHold Modal */}
+            {cancelModal && selectedBook && (
+                <div className="fixed h-screen bg-black/50 z-100 w-screen overflow-y-auto ">
+                    <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0" >
+                        <div className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg" >
+                        <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                            <div className="sm:flex sm:items-start">
+                            <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10" >
+                                <svg
+                                aria-hidden="true"
+                                stroke="currentColor"
+                                stroke-width="1.5"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                className="h-6 w-6 text-red-600"
+                                >
+                                <path
+                                    d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+                                    stroke-linejoin="round"
+                                    stroke-linecap="round"
+                                ></path>
+                                </svg>
+                            </div>
+                            <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
+                                <h3
+                                    id="modal-title"
+                                    className="text-base font-semibold leading-6 text-gray-900"
+                                    >
+                                    Cancel Hold
+                                </h3>
+                                <div className="mt-2">
+                                <p className="text-sm text-gray-500">
+                                    Are you sure you want to cancel this hold? This action cannot be undone. If you have any questions, please contact support.
+                                </p>
+                                </div>
+                            </div>
+                            </div>
+                        </div>
+                        <div className="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                            <button
+                                onClick={() => handleCancelHold(selectedBook?.hold?.hold_id)}
+                                className="cursor-pointer inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto"
+                                type="button"
+                                >
+                                Continue
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setCancelModal(false);
+                                    setSelectedBook(null);
+                                    }}
+                                className="cursor-pointer mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
+                                type="button"
+                                >
+                                Back
+                            </button>
+                        </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Return Modal */}
+            {returnModal && (
+                <div className="fixed h-screen bg-black/50 z-100 w-screen overflow-y-auto ">
+                    <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0" >
+                        <div className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg" >
+                        <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                            <div className="sm:flex sm:items-start">
+                            <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10" >
+                                <CircleAlertIcon style={{color: "red"}}/> 
+                            </div>
+                            <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
+                                <h3
+                                    id="modal-title"
+                                    className="text-base font-semibold leading-6 text-gray-900"
+                                    >
+                                    Hello, {userName}!
+                                </h3>
+                                <div className="mt-2">
+                                <p className="text-sm text-gray-500">
+                                    Please be informed that returning books is not supported by this application. You will have to go to the library to return books. Thank you for your understanding, and please contact support if you have any questions.
+                                </p>
+                                </div>
+                            </div>
+                            </div>
+                        </div>
+                        <div className="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                            <button
+                                onClick={() => setReturnModal(false)}
+                                className="cursor-pointer inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto"
+                                type="button"
+                                >
+                                Understood
+                            </button>
+                        </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Renew Modal */}
+            {renewModal &&  (
+                <div className="fixed h-screen bg-black/50 z-100 w-screen overflow-y-auto ">
+                    <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0" >
+                        <div className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg" >
+                        <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                            <div className="sm:flex sm:items-start">
+                                <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10" >
+                                    <CircleAlertIcon style={{color: "red"}}/> 
+                                </div>
+                                <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
+                                <h3
+                                    id="modal-title"
+                                    className="text-lg font-semibold leading-6 text-gray-900"
+                                >
+                                    Renew Checked-out Book
+                                </h3>
+
+                                <div className="mt-4 space-y-4">
+                                    <p className="text-sm text-gray-600">
+                                    Renewing the book will extend its return date by another week.
+                                    If it is already overdue, you must return it to the library.
+                                    Renewal is not allowed if the book is reserved by another user.
+                                    For questions, please contact the library staff.
+                                    </p>
+
+                                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 shadow-sm">
+                                    <h4 className="text-sm font-bold text-gray-700 mb-2">Renewal Details</h4>
+                                    <ul className="space-y-1 text-sm text-gray-600">
+                                        <li>
+                                        <span className="font-medium text-gray-800">Auto Renew:</span> {renew.auto_renew ? "Yes" : "No"}
+                                        </li>
+                                        <li>
+                                        <span className="font-medium text-gray-800">Checkout ID:</span> {renew.checkout_id}
+                                        </li>
+                                        <li>
+                                        <span className="font-medium text-gray-800">Library:</span> {renew.library_id}
+                                        </li>
+                                        <li>
+                                        <span className="font-medium text-gray-800">Last Renewed:</span>{" "}
+                                        {renew.last_renewed_date
+                                            ? new Intl.DateTimeFormat("en-US", {
+                                                year: "numeric",
+                                                month: "short",
+                                                day: "2-digit",
+                                            }).format(new Date(renew.last_renewed_date))
+                                            : "N/A"}
+                                        </li>
+                                        <li>
+                                        <span className="font-medium text-gray-800">Renewals Count:</span> {renew.renewals_count}
+                                        </li>
+                                    </ul>
+                                    </div>
+                                </div>
+                                </div>
+
+                            </div>
+                        </div>
+                        <div className="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                            <button
+                                onClick={() => {
+                                    setRenewModal(false);
+                                    handleRenewHold(selectedBook);
+                                }}
+
+                                className="cursor-pointer inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto"
+                                type="button"
+                                >
+                                Continue 
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setRenewModal(false)
+                                    setSelectedBook(null);
+                                }}
+                                className="cursor-pointer mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
+                                type="button"
+                                >
+                                Back
+                            </button>
+                        </div>
+                        </div>
+                    </div>
+                </div>
             )}
             {/* TOAST CONTAINER */}
             <ToastContainer/>
@@ -426,7 +732,7 @@ export default function Profile() {
             {icon} {title}
             </h3>
 
-            <div className="space-y-3 max-h-60 overflow-y-auto pr-1">{children}</div>
+            <div className="space-y-3 max-h-300 overflow-y-auto pr-1">{children}</div>
         </div>
     );
 
@@ -436,32 +742,93 @@ export default function Profile() {
     due,
     pickup = false,
     actions
-    }: {
-    title: string;
-    author: string;
-    due: string;
-    pickup?: boolean;
-    actions: { label: string; style: "red" | "blue" }[];
-    }) => (
-    <div className="p-4 bg-slate-900 rounded-xl border border-white/10 flex justify-between items-start">
-        <div className="flex flex-col">
-            <span className="font-semibold">{title}</span>
-            <span className="text-sm text-white/60">by: {author}</span>
+        }: {
+        title: string;
+        author: string;
+        due: string;
+        pickup?: boolean;
+        actions: { label: string; style: "red" | "blue" | "green" | "yellow" | "orange"; onClick?: () => void }[];
+        }) => (
+        <div className="p-4 bg-slate-900 rounded-xl border border-white/10 flex justify-between items-start | flex-col  sm:flex-row gap-2">
+            <div className="flex flex-col |  w-full">
+                <span className="font-semibold">{title}</span>
+                <span className="text-sm text-white/60">by: {author}</span>
+            </div>
+            <div className="flex flex-col text-right items-end gap-2 | w-full ">
+                <span className="text-sm text-white/50">
+                    {pickup ? "Pickup before" : "Due"}: {due}
+                </span>
+                <div className="flex gap-2">
+                    {actions.map((action, i) => (
+                    <button
+                        key={i}
+                        onClick={action.onClick}
+                        className={`cursor-pointer px-3 py-1 text-xs bg-${action.style}-500 hover:bg-${action.style}-600 rounded-md text-white font-medium transition`}
+                    >
+                        {action.label}
+                    </button>
+                    ))}
+                </div>
+            </div>
         </div>
-        <div className="flex flex-col text-right items-end gap-2">
-            <span className="text-sm text-white/50">
-                {pickup ? "Pickup before" : "Due"}: {due}
-            </span>
-        <div className="flex gap-2">
-            {actions.map((action, i) => (
-            <button
-                key={i}
-                className={`cursor-pointer px-3 py-1 text-xs bg-${action.style}-500 hover:bg-${action.style}-600 rounded-md text-white font-medium transition`}
-            >
-                {action.label}
+    );
+
+const Modal = ({ book, onClose }: { book: any; onClose: () => void }) => (
+    <div className="fixed px-5 inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-6 rounded-2xl max-w-md w-full text-white shadow-2xl border border-white/10">
+            
+            {/* Title + Author */}
+            <h2 className="text-2xl font-bold text-orange-400 mb-1">{book?.title}</h2>
+            <p className="text-sm text-white/60 mb-4">by {book?.author ?? "Unknown"}</p>
+            
+            {/* Publisher & Description */}
+            <div className="mb-4">
+            <p className="text-sm"><strong className="text-white/70">Publisher:</strong> {book?.publisher ?? "Unknown"}</p>
+            <p className="text-sm mt-2 text-white/80">
+                {book?.abstract ?? "No description available."}
+            </p>
+            </div>
+
+            {/* Hold Info */}
+            {book?.hold && (
+            <div className="bg-slate-700/40 p-4 rounded-xl border border-slate-600/40 space-y-3">
+                
+                {/* Highlighted Row */}
+                <div className="flex justify-between items-center">
+                <span className="text-sm font-semibold text-white/70">Hold Date:</span>
+                <span className="text-base font-bold text-green-400">
+                    {book.hold.hold_date}
+                </span>
+                </div>
+
+                <div className="flex justify-between items-center">
+                <span className="text-sm font-semibold text-white/70">Priority:</span>
+                <span className={`text-base font-bold ${book.hold.priority === 1 ? "text-yellow-400" : "text-blue-400"}`}>
+                    {book.hold.priority}
+                </span>
+                </div>
+
+                <hr className="border-slate-600/40" />
+
+                {/* Other Info */}
+                <p className="text-sm"><strong>Hold ID:</strong> {book.hold.hold_id}</p>
+                <p className="text-sm"><strong>Patron ID:</strong> {book.hold.patron_id}</p>
+                <p className="text-sm"><strong>Pickup Library:</strong> {book.hold.pickup_library_id}</p>
+                <p className="text-sm"><strong>Expiration Date:</strong> {book.hold.expiration_date}</p>
+                <p className="text-sm"><strong>Item ID:</strong> {book.hold.item_id}</p>
+                <p className="text-sm"><strong>Item Level:</strong> {book.hold.item_level ? "Yes" : "No"}</p>
+                <p className="text-sm"><strong>Status:</strong> {book.hold.status ?? "Pending"}</p>
+            </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex justify-end gap-3 mt-6">
+            <button onClick={onClose} className="bg-gray-500 hover:bg-gray-600 px-4 py-2 rounded-lg text-sm cursor-pointer">
+                Close
             </button>
-            ))}
-        </div>
+            </div>
         </div>
     </div>
-    );
+);
+
+

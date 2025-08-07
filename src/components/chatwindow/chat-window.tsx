@@ -233,7 +233,7 @@ export default function ChatWindow({
         setChatHistory((prev) => [...prev, { type: "user", message }]);
         setLoading(true);
         setMessage("");
-
+        console.log("cardNumber", cardNumber);
 
 
         try {
@@ -457,25 +457,25 @@ export default function ChatWindow({
         };
         fetchItems();
     }, [reserveModalOpen, reserveData?.biblio_id]);
-    // Backend Health Check
-    useEffect(() => {
-        const checkBackend = async () => {
-            try {
-                const res = await fetch(`${backendUrl}/health`, {
-                    method: 'GET',
-                    headers: { 'Accept': 'application/json' }
-                });
-                const data = await res.json();
-                setBackendOnline(data.status === "healthy");
-            } catch {
-                handleToast("Athenia is offline. Please refresh the page.", "error");
-                setBackendOnline(false);
-            }
-        };
-        checkBackend();
-        const interval = setInterval(checkBackend, 10000); 
-        return () => clearInterval(interval);
-    }, []);
+    // // Backend Health Check
+    // useEffect(() => {
+    //     const checkBackend = async () => {
+    //         try {
+    //             const res = await fetch(`${backendUrl}/health`, {
+    //                 method: 'GET',
+    //                 headers: { 'Accept': 'application/json' }
+    //             });
+    //             const data = await res.json();
+    //             setBackendOnline(data.status === "healthy");
+    //         } catch {
+    //             handleToast("Athenia is offline. Please refresh the page.", "error");
+    //             setBackendOnline(false);
+    //         }
+    //     };
+    //     checkBackend();
+    //     const interval = setInterval(checkBackend, 10000); 
+    //     return () => clearInterval(interval);
+    // }, []);
     
     return (
         <div className="flex shrink-0 items-center flex-col h-screen w-full">
@@ -497,8 +497,8 @@ export default function ChatWindow({
                             Athenia
                         </h1>
                         <span className="flex items-center gap-1 text-xs">
-                            <span className={`w-2 h-2 rounded-full ${backendOnline ? "bg-orange-500" : "bg-red-500"}`}></span>
-                            <span className={`${backendOnline ? "text-orange-500" : "text-red-500"}`}>
+                            <span className={`w-2 h-2 rounded-full ${backendOnline ? "bg-green-500" : "bg-red-500"}`}></span>
+                            <span className={`${backendOnline ? "text-green-500" : "text-red-500"}`}>
                                 {backendOnline ? "Online" : "Offline"}
                             </span>
 
@@ -600,7 +600,7 @@ export default function ChatWindow({
                 if (item.type === "user") {
                 return (
                     <div key={idx} className="flex w-full justify-end text-wrap gap-3 p-4">
-                    <div className="p-5 max-w-[80%] rounded-lg space-y-4 bg-gradient-to-r from-orange-500 via-orange-600 to-orange-500 text-white shadow-orange-500/20">
+                    <div className="p-3 max-w-[80%] rounded-lg space-y-4 bg-gradient-to-r from-orange-500 via-orange-600 to-orange-500 text-white shadow-orange-500/20">
                         <p>{item.message}</p>
                     </div>
                     <div>
@@ -622,7 +622,7 @@ export default function ChatWindow({
                             className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30"
                             />
                         </div>
-                        <div className="p-5 max-w-[80%] rounded-lg space-y-4 bg-gradient-to-r from-slate-700/80 to-slate-600/80 text-white border border-slate-500/30 backdrop-blur-sm shadow-slate-900/20">
+                        <div className="p-3 max-w-[80%] rounded-lg space-y-4 bg-gradient-to-r from-slate-700/80 to-slate-600/80 text-white border border-slate-500/30 backdrop-blur-sm shadow-slate-900/20">
                             <p>{item.message}</p>
                         </div>
                     </div>
