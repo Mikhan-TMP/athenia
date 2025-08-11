@@ -5,6 +5,9 @@ import { SettingsIcon, LogOutIcon, BadgeCheckIcon, PanelLeftIcon, SendIcon, User
 import { AnimatePresence, motion } from "framer-motion";
 import { ToastContainer, toast } from 'react-toastify';
 import { useRouter } from 'next/navigation';
+// Import image
+import Image from "next/image";
+
 
 const books = [
     {
@@ -55,6 +58,7 @@ export default function ChatWindow({
     // RESERVE BOOK MODAL
     const [reserveModalOpen, setReserveModalOpen] = useState(false);
     const [reserveData, setReserveData] = useState<{ patron_id: number; biblio_id: number } | null>(null);
+    const [holdDate, setHoldDate] = useState<string>("");
     const [holdModal, setHoldModal] =  useState<any>(null);
     const [holdModalOpen, setHoldModalOpen] = useState(false);
     const [holdModalLoading, setHoldModalLoading] = useState(false);
@@ -86,6 +90,18 @@ export default function ChatWindow({
     const [patronId, setPatronId] = useState<string | null>(null);
     const [cardNumber, setCardNumber] = useState<string | null>(null);
     const [userName, setUserName] = useState<string | null>(null);
+
+    // Show all modal
+    const [showAllModalOpen, setShowAllModalOpen] = useState(false);
+    const [showAllBooks, setShowAllBooks] = useState<Array<{
+        title: string;
+        author: string;
+        year: number;
+        publisher: string;
+        isbn: string;
+        quantity_available: number;
+        biblio_id: number;
+    }> | null>(null);
 
 
     //Loading
@@ -142,6 +158,10 @@ export default function ChatWindow({
             handleToast("Please select a pickup library.", "error");
             return
         }
+        // if (holdDate === ""){
+        //     handleToast("Please select a hold date.", "error");
+        //     return
+        // }
         if (selectedItem.length === 0){
             handleToast("No available items to reserve.", "error");
             return
@@ -150,12 +170,23 @@ export default function ChatWindow({
             handleToast("Please log in to reserve a book.", "error");
             return
         }
+        console.log(holdDate); 
 
         for (const item of selectedItem) {
             try {
                 const url = `${kohaAPI}/api/v1/holds`;
                 const basicAuth = `Basic ${btoa(unescape(encodeURIComponent(`${kohaUsername}:${kohaPassword}`)))}`;
 
+                //build payload
+                const payload = {
+                    patron_id: reserveData?.patron_id ?? 0,
+                    biblio_id: reserveData?.biblio_id ?? 0,
+                    item_id: item.item_id,
+                    pickup_library_id: selectedLibrary,
+                    // hold_date: holdDate || new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                };
+
+                console.log(payload);
                 const response = await fetch(url, {
                     method: "POST",
                     headers: {
@@ -164,10 +195,13 @@ export default function ChatWindow({
                         "Authorization": basicAuth
                     },
                     body: JSON.stringify({
-                        patron_id: reserveData?.patron_id ?? 0,
-                        biblio_id: reserveData?.biblio_id ?? 0,
-                        item_id: item.item_id,
-                        pickup_library_id: selectedLibrary
+                        ...payload,
+                        // patron_id: reserveData?.patron_id ?? 0,
+                        // biblio_id: reserveData?.biblio_id ?? 0,
+                        // item_id: item.item_id,
+                        // pickup_library_id: selectedLibrary,
+                        // hold_date: holdDate ??
+                        //     new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
                     })
                 });
 
@@ -253,7 +287,7 @@ export default function ChatWindow({
             const responseType = data?.response?.[0]?.type;
 
             // Handle response types
-            // console.log(data);
+            console.log(data);
 
             if (!data.response || data.response.length === 0) {
                 // GENERAL CHAT
@@ -317,7 +351,7 @@ export default function ChatWindow({
             });
             if (!res.ok) throw new Error(`Error ${res.status}`);
             const data = await res.json();
-            // console.log("Book details response:", data);
+            console.log("Book details response:", data);
 
             if (!data) {
                 setModalError("No details found for this book.");
@@ -440,7 +474,7 @@ export default function ChatWindow({
                     if (!res.ok) throw new Error(`Error ${res.status}`);
                     
                     const data = await res.json();
-                    // console.log(data);
+                    console.log("items_fetched", data);
                     setItems(data);
                     const available = data.filter((item: Item) => item.checked_out_date === null);
                     setAvailableCount(available.length);
@@ -486,7 +520,7 @@ export default function ChatWindow({
                         style={{ color: "white", cursor: "pointer" }}
                         onClick={onSidebarToggle}
                     />
-                    <div className="border-l border-white/50 h-5 mx-2" />
+                    {/* <div className="border-l border-white/50 h-5 mx-2" />
                         <img
                         src="/Athenia2.png"
                         alt="Athenia Profile Image"
@@ -503,13 +537,15 @@ export default function ChatWindow({
                             </span>
 
                         </span>
-                    </div>
+                    </div> */}
                 </div>
                 <div className="relative">
                     <div className="flex flex-col gap-1 items-center justify-center border-l border-white/50 h-5 mx-2 px-5">
-                        <img 
-                            src={isGuest ? "/Default_User.jpg" : "/User.jfif"}
+                        <Image
+                            src={isGuest ? "/Default_User.jpg" : "/default-user.webp"}
                             alt="User"
+                            width={40}
+                            height={40}
                             className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30"
                             onClick={() => setDropdownOpen(!dropdownOpen)}
                         />
@@ -575,9 +611,11 @@ export default function ChatWindow({
             {chatHistory.length === 0 && !loading && (
                 <div className="flex flex-1 justify-center items-center select-none ">
                     <div className="mx-auto p-8 w-150 rounded-2xl bg-gradient-to-r from-slate-900/50 to-slate-800/50 text-white text-center shadow-lg">
-                        <img
+                        <Image
                             src="/Athenia2.png"
                             alt="Athenia Avatar"
+                            width={120}
+                            height={120}
                             className="mx-auto mb-3 w-30 h-30 rounded-full ring-2 ring-orange-300/50"
                         />
                         <h2 className="text-3xl font-bold text-white drop-shadow">Welcome to AI Ask Librarian!</h2>
@@ -604,10 +642,13 @@ export default function ChatWindow({
                         <p>{item.message}</p>
                     </div>
                     <div>
-                        <img 
-                            src={isGuest ? "/Default_User.jpg" : "/User.jfif"}
+                        <Image
+                            src={isGuest ? "/Default_User.jpg" : "/default-user.webp"}
                             alt="User"
+                            width={40}
+                            height={40}
                             className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30"
+                            onClick={() => setDropdownOpen(!dropdownOpen)}
                         />
                     </div>
                     </div>
@@ -616,9 +657,11 @@ export default function ChatWindow({
                 return (
                     <div key={idx} className="flex w-full justify-start text-wrap gap-3 p-4">
                         <div>
-                            <img
+                            <Image
                             src="/Athenia2.png"
                             alt="Avatar"
+                            width={40}
+                            height={40}
                             className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30"
                             />
                         </div>
@@ -639,9 +682,11 @@ export default function ChatWindow({
                         {/* GENERAL CHAT */}
                         <div className="flex w-full justify-start text-wrap gap-3 p-4">
                             <div>
-                                <img
+                                <Image
                                 src="/Athenia2.png"
                                 alt="Avatar"
+                                width={40}
+                                height={40}
                                 className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30"
                                 />
                             </div>
@@ -662,10 +707,12 @@ export default function ChatWindow({
 
                         <div key={bIdx} className="flex w-full justify-start text-wrap gap-3 p-4">
                             <div>
-                                <img 
-                                    src="/Athenia2.png"
-                                    alt="AI Avatar"
-                                    className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30"
+                                <Image
+                                src="/Athenia2.png"
+                                alt="Avatar"
+                                width={40}
+                                height={40}
+                                className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30"
                                 />
                             </div>
 
@@ -735,9 +782,15 @@ export default function ChatWindow({
                                 {/* Pagination Controls */}
                                 <div className="flex flex-wrap gap-2 items-center mt-1   justify-between">
                                     <div>
-                                        <button className="cursor-pointer px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-md">
+                                    <button
+                                        className="cursor-pointer px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-md"
+                                            onClick={() => {
+                                                setShowAllBooks(item.books);
+                                                setShowAllModalOpen(true);
+                                            }}
+                                        >
                                             Show All
-                                        </button>
+                                    </button>
                                     </div>
                                     <div className=" flex items-center gap-2">
                                         <button
@@ -781,9 +834,11 @@ export default function ChatWindow({
             {loading && (
                 <div className="flex w-full justify-start text-wrap gap-3 p-4 opacity-60">
                     <div>
-                        <img
+                        <Image
                         src="/Athenia2.png"
                         alt="Avatar"
+                        width={40}
+                        height={40}
                         className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30"
                         />
                     </div>
@@ -976,6 +1031,8 @@ export default function ChatWindow({
                 </div>
             </div>
             )}
+
+
             {/* Reservation Modal */}
             {reserveModalOpen && reserveData && (
             <div className="fixed inset-0 z-50 p-5 flex items-center justify-center bg-black/40 backdrop-blur-sm">
@@ -1016,7 +1073,7 @@ export default function ChatWindow({
                 </div>
 
                 {/* Library Selector */}
-                <div className="mb-6">
+                <div className="mb-2">
                     <label htmlFor="library" className="block text-slate-400 mb-2 text-sm">
                     Select Pickup Library:
                     </label>
@@ -1034,7 +1091,21 @@ export default function ChatWindow({
                         ))}
                     </select>
                 </div>
-
+                {/* Date Selector
+                <div className="mb-6">
+                    <label htmlFor="date" className="block text-slate-400 mb-2 text-sm">
+                    Select Hold Date:
+                    </label>
+                    <input
+                        type="date"
+                        id="date"
+                        value={holdDate}
+                        onChange={(e) => setHoldDate(e.target.value)}
+                        min={new Date().toISOString().split('T')[0]}
+                        max={new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+                        className="w-full bg-slate-900 text-white border border-purple-500 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                </div> */}
                 {/* Footer Buttons */}
                 <div className="flex justify-end gap-3">
                     <button
@@ -1201,6 +1272,92 @@ export default function ChatWindow({
                     >
                         <div className="w-16 h-16 border-4 border-transparent text-red-400 text-2xl animate-spin flex items-center justify-center border-t-red-400 rounded-full"
                         ></div>
+                    </div>
+                </div>
+            )}
+            {/* Show All Modal */}
+            {showAllModalOpen && showAllBooks && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                    <div className="relative w-full max-w-2xl bg-gradient-to-br from-slate-800 via-blue-900/90 to-slate-700 text-white rounded-2xl shadow-2xl ring-1 ring-orange-400/30 border border-orange-300/20 p-6 sm:p-8 overflow-y-auto max-h-[90vh]">
+                        {/* Close Button */}
+                        <button
+                            onClick={() => setShowAllModalOpen(false)}
+                            className="absolute top-4 right-4 text-slate-400 hover:text-orange-400 transition-colors cursor-pointer"
+                            aria-label="Close"
+                        >
+                            <CircleX size={24} />
+                        </button>
+                        <h2 className="text-2xl font-bold mb-4 text-orange-300">All Results</h2>
+                        {showAllBooks.length === 0 ? (
+                            <div className="text-center py-10 text-red-400 font-semibold text-lg">
+                                No books found.
+                            </div>
+                        ) : (
+                            <div className="space-y-6">
+                                {showAllBooks.map((book, bIdx) => (
+                                    <div key={bIdx} className="w-full p-4 space-y-3 bg-gradient-to-r from-slate-700/80 to-slate-600/80 rounded-xl shadow-md border-l-4 border-orange-500/100">
+                                        <div className="flex gap-2 h-12 justify-between items-center">
+                                            <h1 className="text-lg font-bold w-3/4 line-clamp-2">
+                                                {book.title.length > 60 ? `${book.title.substring(0, 57)}...` : book.title}
+                                            </h1>
+                                            <span className={`text-sm text-center font-semibold ${book.quantity_available > 0 ? 'bg-green-500' : 'bg-red-400'} text-white px-3 py-1 rounded-full`}>
+                                                {book.quantity_available} AVAILABLE
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between text-gray-300 text-sm">
+                                            <div>
+                                                <span className="block text-white/50">Author</span>
+                                                <span className="font-semibold">{book.author}</span>
+                                            </div>
+                                            <div>
+                                                <span className="block text-white/50">Year</span>
+                                                <span className="font-semibold">{book.year}</span>
+                                            </div>
+                                        </div>
+                                        <div className="border border-gray-200 rounded-md px-4 py-3 bg-gray-50 text-sm text-black">
+                                            <div className="flex justify-between gap-2">
+                                                <span className="text-gray-500 w-1/2">Publisher</span>
+                                                <span className="font-medium w-1/2">{book.publisher}</span>
+                                            </div>
+                                            <hr className="border-gray-300 w-full my-3" />
+                                            <div className="flex justify-between mt-1 gap-2">
+                                                <span className="text-gray-500 w-1/2">ISBN</span>
+                                                <span className="w-1/2">{book.isbn}</span>
+                                            </div>
+                                            <hr className="border-gray-300 w-full my-3" />
+                                            <div className="flex justify-between mt-1 gap-2">
+                                                <span className="text-gray-500 w-1/2">Biblio ID</span>
+                                                <span className="w-1/2">{book.biblio_id}</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-4">
+                                            <button
+                                                className="cursor-pointer flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-md font-medium text-sm"
+                                                onClick={() => {
+                                                    setReserveData({
+                                                        patron_id: localStorage.getItem("patron_id") ? Number(localStorage.getItem("patron_id")) : 0,
+                                                        biblio_id: book.biblio_id,
+                                                    });
+                                                    setReserveModalOpen(true);
+                                                    setShowAllModalOpen(false);
+                                                }}
+                                            >
+                                                📚 Reserve Book
+                                            </button>
+                                            <button
+                                                className="cursor-pointer flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-md font-medium text-sm"
+                                                onClick={() => {
+                                                    handleMoreInfo(book.biblio_id);
+                                                    setShowAllModalOpen(false);
+                                                }}
+                                            >
+                                                🧾 More Info
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

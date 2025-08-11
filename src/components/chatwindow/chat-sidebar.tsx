@@ -13,8 +13,8 @@ export default function ChatSidebar({ onSidebarToggle, sidebarOpen }: { onSideba
         <div className="w-80 h-screen bg-[rgba(26,30,44,1)] flex flex-col z-99 absolute md:relative ">
             <div className="flex-1 flex flex-col">
                 {/* LOGO */}
-                <div className="select-none flex justify-between items-center p-4 bg-gradient-to-r from-slate-900/50 to-slate-800/50 border-b border-white/5 bg-[rgba(26,30,44,1)]">
-                    <h1 className="text-2xl font-bold text-white text-center">AI LIBRARIAN</h1>
+                <div className="select-none flex justify-between items-center p-5.5 bg-gradient-to-r from-slate-900/50 to-slate-800/50 border-b border-white/5 bg-[rgba(26,30,44,1)]">
+                    <h1 className="text-2xl font-bold text-white text-center">AI Librarian  </h1>
                     <PanelLeftIcon
                         className="md:hidden lg:hidden"
                         style={{ color: "white", cursor: "pointer" }}
@@ -77,6 +77,10 @@ export default function ChatSidebar({ onSidebarToggle, sidebarOpen }: { onSideba
                     <Settings className="h-4 w-4" />
                     Settings
                 </button>
+                {/* Footer */}
+                <div className="border-t border-white/5 p-4">
+                    <span className="text-xs text-white/60">© 2025 Ntek Systems Inc</span>
+                </div>
             </div>
         </div>
     );

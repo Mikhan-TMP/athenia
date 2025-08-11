@@ -1,5 +1,5 @@
 'use client';
-import { CircleAlert, BookAIcon, BookOpen, ArrowLeft, Pencil, Book, BookAlert, BookOpenText, CircleAlertIcon } from "lucide-react";
+import { CircleAlert, BookAIcon, BookOpen, ArrowLeft, Pencil, Book, BookAlert, BookOpenText, CircleAlertIcon, InfoIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { ToastContainer, toast } from 'react-toastify';
@@ -20,6 +20,7 @@ export default function Profile() {
     const [overdueBookdetails, setOverdueBookDetails] = useState<any[]>([]);
     const [borrowedBooks, setBorrowedBooks] = useState<any>(null);
     const [patronId, setPatronId] = useState<string | null>(null);
+    const [checkoutHistory, setCheckoutHistory] = useState<any[]>([]);
     const [cardNumber, setCardNumber] = useState<string | null>(null);
     const router = useRouter();
     const [userName, setUserName] = useState<string | null>(null);
@@ -30,6 +31,7 @@ export default function Profile() {
     const [cancelModal, setCancelModal] = useState(false);
     const [returnModal, setReturnModal] = useState(false);
     const [renewModal, setRenewModal] = useState(false);
+    const [borrowedHistoryModal, setBorrowedHistoryModal] = useState(false);
 
     // renewal
     const [renew, setRenew] = useState<any>(null);
@@ -302,6 +304,32 @@ export default function Profile() {
         console.log(checkout);
     }
 
+    const fetchCheckoutHistory = async () => {
+        try {
+            const url = `${kohaAPI}/api/v1/checkouts/?patron_id=${patronId}&checked_in=true`;
+            const basicAuth = `Basic ${btoa(unescape(encodeURIComponent(`${kohaUsername}:${kohaPassword}`)))}`;
+
+            const res = await fetch(url, {
+                method: "GET",
+                headers: {
+                    "Authorization": basicAuth,
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                }
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                setCheckoutHistory(data); // <-- Populate the modal with history data
+                console.log("Checkout History:", data);
+            } else {
+                console.error("Failed to fetch checkout history:", res.statusText);
+            }
+        }catch (err) {
+            console.error("Error fetching checkout history:", err);
+        }
+    }
+
 
     return (
         <motion.div
@@ -396,9 +424,21 @@ export default function Profile() {
                 {/* Overview */}
                     <SectionCard title="📊 Account Overview">
                         <div className="grid grid-cols-3 gap-4 text-sm">
-                        <StatCard label="Borrowed Books" value={borrowed.length ?? 0}color="orange" />
-                        <StatCard label="Books on Hold" value={holds.length ?? 0} color="blue" />
-                        <StatCard label="Overdue Items" value={overdues.length ?? 0} color="red" />
+                            <StatCard label="Borrowed Books" value={borrowed.length ?? 0}color="orange" />
+                            <StatCard label="Books on Hold" value={holds.length ?? 0} color="blue" />
+                            <StatCard label="Overdue Items" value={overdues.length ?? 0} color="red" />
+                        </div>
+                        <p className="text-sm text-white/60">Keep track of your account status and avoid overdue items.</p>
+                        <div className="gap-4 text-sm">
+                            <button className="cursor-pointer flex justify-center items-center gap-2 px-5 py-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg shadow transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2"
+                                onClick={() => {
+                                    setBorrowedHistoryModal(true);
+                                    fetchCheckoutHistory();
+                                }}
+                            >
+                                <BookOpenText className="w-5 h-5" />
+                                View History
+                            </button>
                         </div>
                     </SectionCard>
 
@@ -407,14 +447,22 @@ export default function Profile() {
                         {overdues.length > 0 ? (
                             overdues.map((book, index) => (
                                 <BookCard
-                                title="📚 The Midnight Library"
-                                author="Jake Napay"
-                                due="2023-10-23"
-                                actions={[{ label: "Return", style: "red" }]}
+                                key={index}
+                                title={`📚 ${book.title ?? "Untitled"}`}
+                                author={book.author ?? "Unknown"}
+                                due={new Date(book.due_date ?? "N/A").toLocaleString("en-US", { timeZone: "Asia/Singapore", year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                actions={[{ label: "Return", style: "red"  , 
+                                            onClick: () => {
+                                                setSelectedBook({ ...borrowed, borrowedBooks: borrowedBooks[index] });
+                                                fetchRenewDetails(borrowedBooks[index]);
+                                                setRenewModal(true);
+                                            }
+                                        }
+                                    ]}
                                 />
                             ))
                         ) : (
-                            <p className="text-center text-sm text-white/50">No overdued books.</p>
+                            <p className="text-center text-sm text-white/50">No overdue books.</p>
                         )}
                         
                     </SectionCard>
@@ -430,6 +478,7 @@ export default function Profile() {
                                     due={new Date(borrowedBooks[index]?.due_date ?? "N/A").toLocaleString("en-US", { timeZone: "Asia/Singapore", year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                     actions={[
                                         { label: "Renew", style: "orange", 
+
                                             onClick: () => {
                                                 setSelectedBook({ ...borrowed, borrowedBooks: borrowedBooks[index] });
                                                 fetchRenewDetails(borrowedBooks[index]);
@@ -509,10 +558,10 @@ export default function Profile() {
             )}
             {/* CancelHold Modal */}
             {cancelModal && selectedBook && (
-                <div className="fixed h-screen bg-black/50 z-100 w-screen overflow-y-auto ">
+                <div className="fixed h-screen bg-black/80 z-100 w-screen overflow-y-auto ">
                     <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0" >
-                        <div className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg" >
-                        <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                        <div className="relative transform overflow-hidden rounded-lg bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10 border border-gray-800 rounded-lg rounded-b-none text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg" >
+                        <div className="bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10  rounded-lg rounded-b-none px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
                             <div className="sm:flex sm:items-start">
                             <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10" >
                                 <svg
@@ -533,19 +582,19 @@ export default function Profile() {
                             <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
                                 <h3
                                     id="modal-title"
-                                    className="text-base font-semibold leading-6 text-gray-900"
+                                    className="text-base font-semibold leading-6 text-red-700"
                                     >
                                     Cancel Hold
                                 </h3>
                                 <div className="mt-2">
-                                <p className="text-sm text-gray-500">
+                                <p className="text-sm text-white/80">
                                     Are you sure you want to cancel this hold? This action cannot be undone. If you have any questions, please contact support.
                                 </p>
                                 </div>
                             </div>
                             </div>
                         </div>
-                        <div className="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                        <div className="bg-gray-900 border-t border-gray-800 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
                             <button
                                 onClick={() => handleCancelHold(selectedBook?.hold?.hold_id)}
                                 className="cursor-pointer inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto"
@@ -570,30 +619,30 @@ export default function Profile() {
             )}
             {/* Return Modal */}
             {returnModal && (
-                <div className="fixed h-screen bg-black/50 z-100 w-screen overflow-y-auto ">
+                <div className="fixed h-screen bg-black/80 z-100 w-screen overflow-y-auto ">
                     <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0" >
-                        <div className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg" >
-                        <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                        <div className="relative transform overflow-hidden rounded-lg bg-clip-padding backdrop-filter  backdrop-blur-sm bg-opacity-10 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg" >
+                        <div className="bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10 border border-gray-800 px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
                             <div className="sm:flex sm:items-start">
                             <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10" >
-                                <CircleAlertIcon style={{color: "red"}}/> 
+                                <CircleAlertIcon style={{color: "blue"}}/> 
                             </div>
                             <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
                                 <h3
                                     id="modal-title"
-                                    className="text-base font-semibold leading-6 text-gray-900"
+                                    className="text-base font-semibold leading-6 text-orange-500"
                                     >
                                     Hello, {userName}!
                                 </h3>
                                 <div className="mt-2">
-                                <p className="text-sm text-gray-500">
+                                <p className="text-sm text-white/80">
                                     Please be informed that returning books is not supported by this application. You will have to go to the library to return books. Thank you for your understanding, and please contact support if you have any questions.
                                 </p>
                                 </div>
                             </div>
                             </div>
                         </div>
-                        <div className="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                        <div className="bg-gray-900 border-t border-gray-800 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
                             <button
                                 onClick={() => setReturnModal(false)}
                                 className="cursor-pointer inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto"
@@ -609,10 +658,10 @@ export default function Profile() {
 
             {/* Renew Modal */}
             {renewModal &&  (
-                <div className="fixed h-screen bg-black/50 z-100 w-screen overflow-y-auto ">
+                <div className="fixed h-screen bg-black/80 z-100 w-screen overflow-y-auto ">
                     <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0" >
-                        <div className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg" >
-                        <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                        <div className="relative transform overflow-hidden rounded-lg  bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10 border border-gray-800 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg" >
+                        <div className=" bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10 border border-gray-800 px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
                             <div className="sm:flex sm:items-start">
                                 <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10" >
                                     <CircleAlertIcon style={{color: "red"}}/> 
@@ -620,52 +669,44 @@ export default function Profile() {
                                 <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
                                 <h3
                                     id="modal-title"
-                                    className="text-lg font-semibold leading-6 text-gray-900"
+                                    className="text-2xl font-semibold leading-6 text-orange-600"
                                 >
                                     Renew Checked-out Book
                                 </h3>
 
-                                <div className="mt-4 space-y-4">
-                                    <p className="text-sm text-gray-600">
-                                    Renewing the book will extend its return date by another week.
-                                    If it is already overdue, you must return it to the library.
-                                    Renewal is not allowed if the book is reserved by another user.
-                                    For questions, please contact the library staff.
-                                    </p>
+                                    <div className="mt-4 space-y-4">
+                                        <p className="text-sm text-white/90 text-justify">
+                                        Renewing the book will extend its return date by another week.
+                                        If it is already overdue, you must return it to the library.
+                                        Renewal is not allowed if the book is reserved by another user.
+                                        For questions, please contact the library staff.
+                                        </p>
 
-                                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 shadow-sm">
-                                    <h4 className="text-sm font-bold text-gray-700 mb-2">Renewal Details</h4>
-                                    <ul className="space-y-1 text-sm text-gray-600">
-                                        <li>
-                                        <span className="font-medium text-gray-800">Auto Renew:</span> {renew.auto_renew ? "Yes" : "No"}
-                                        </li>
-                                        <li>
-                                        <span className="font-medium text-gray-800">Checkout ID:</span> {renew.checkout_id}
-                                        </li>
-                                        <li>
-                                        <span className="font-medium text-gray-800">Library:</span> {renew.library_id}
-                                        </li>
-                                        <li>
-                                        <span className="font-medium text-gray-800">Last Renewed:</span>{" "}
-                                        {renew.last_renewed_date
-                                            ? new Intl.DateTimeFormat("en-US", {
-                                                year: "numeric",
-                                                month: "short",
-                                                day: "2-digit",
-                                            }).format(new Date(renew.last_renewed_date))
-                                            : "N/A"}
-                                        </li>
-                                        <li>
-                                        <span className="font-medium text-gray-800">Renewals Count:</span> {renew.renewals_count}
-                                        </li>
-                                    </ul>
+                                        <div className="rounded-lg border border-gray-200 p-4 shadow-sm">
+                                            <h4 className="text-sm font-bold text-orange-400 mb-2">Renewal Details</h4>
+                                            <ul className="space-y-1 text-sm text-white-600 flex flex-col justify-between w-full">
+                                                <li><span className="font-medium text-white/40">Auto Renew:</span> {renew.auto_renew ? "Yes" : "No"}</li>
+                                                <li><span className="font-medium text-white/40">Checkout ID:</span> {renew.checkout_id}</li>
+                                                <li><span className="font-medium text-white/40">Library:</span> {renew.library_id}</li>
+                                                <li>
+                                                <span className="font-medium text-white/40">Last Renewed:</span>{" "}
+                                                {renew.last_renewed_date
+                                                    ? new Intl.DateTimeFormat("en-US", {
+                                                        year: "numeric",
+                                                        month: "short",
+                                                        day: "2-digit",
+                                                    }).format(new Date(renew.last_renewed_date))
+                                                    : "N/A"}
+                                                </li>
+                                                <li><span className="font-medium text-white/40">Renewals Count:</span> {renew.renewals_count}</li>
+                                            </ul>
+                                        </div>
                                     </div>
-                                </div>
                                 </div>
 
                             </div>
                         </div>
-                        <div className="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                        <div className="bg-gray-900 border-t border-gray-800 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
                             <button
                                 onClick={() => {
                                     setRenewModal(false);
@@ -686,6 +727,88 @@ export default function Profile() {
                                 type="button"
                                 >
                                 Back
+                            </button>
+                        </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Checkout History Modal */}
+            {borrowedHistoryModal && (
+                <div className="fixed h-screen bg-black/80 z-100 w-screen overflow-y-auto  ">
+                    <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0 " >
+                        <div className="relative transform overflow-hidden rounded-lg  text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg" >
+                        <div className="  bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10 border border-gray-800 rounded-lg rounded-b-none px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                            <div className="mt-4 p-3">
+                                <h3 className="text-2xl font-bold text-orange-600 mb-4 flex items-center gap-2">
+                                    <BookOpenText className="w-6 h-6 text-orange-500" />
+                                    Borrowed History
+                                </h3>
+                                {checkoutHistory.length > 0 ? (
+                                    <div className="max-h-120 p-3 overflow-y-auto grid grid-cols-1 gap-4 cursor-pointer border ">
+                                        {checkoutHistory.map((item, idx) => (
+                                            <div
+                                                key={idx}
+                                                className="rounded-md bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-20 border border-gray-100 rounded-2xl p-5 shadow-lg hover:shadow-xl transition-shadow duration-200"
+                                            >
+                                                <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2 mb-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-semibold text-orange-500">Checkout ID:</span>
+                                                        <span className="text-white">{item.checkout_id}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-semibold text-orange-300">Item ID:</span>
+                                                        <span className="text-white">{item.item_id}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-semibold text-orange-300">Library:</span>
+                                                        <span className="text-white">{item.library_id}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-2 text-sm mb-2">
+                                                    <div className="flex flex-col">
+                                                        <span className="font-medium text-orange-300">Checked Out</span>
+                                                        <span className="text-gray-200">{new Date(item.checkout_date).toLocaleString()}</span>
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <span className="font-medium text-orange-300">Checked In</span>
+                                                        <span className="text-gray-200">{new Date(item.checkin_date).toLocaleString()}</span>
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <span className="font-medium text-orange-300">Due Date</span>
+                                                        <span className="text-gray-200">{new Date(item.due_date).toLocaleString()}</span>
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <span className="font-medium text-orange-300">Renewals</span>
+                                                        <span className="text-gray-200">{item.renewals_count}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex justify-end">
+                                                    <span className="inline-block px-3 py-1 rounded-full bg-orange-100 text-orange-600 text-xs font-semibold">
+                                                        {item.onsite_checkout ? "Onsite" : "Take-home"}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-10">
+                                        <BookOpenText className="w-10 h-10 text-gray-300 mb-2" />
+                                        <p className="text-base text-orange-300 font-medium">No borrowed history found.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="bg-gray-900 border-t border-gray-800 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                            <button
+                                onClick={() => {
+                                    setBorrowedHistoryModal(false);
+                                }}
+                                className="cursor-pointer inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto"
+                                type="button"
+                                >
+                                Close
                             </button>
                         </div>
                         </div>
@@ -774,61 +897,147 @@ export default function Profile() {
     );
 
 const Modal = ({ book, onClose }: { book: any; onClose: () => void }) => (
-    <div className="fixed px-5 inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-        <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-6 rounded-2xl max-w-md w-full text-white shadow-2xl border border-white/10">
-            
-            {/* Title + Author */}
-            <h2 className="text-2xl font-bold text-orange-400 mb-1">{book?.title}</h2>
-            <p className="text-sm text-white/60 mb-4">by {book?.author ?? "Unknown"}</p>
-            
-            {/* Publisher & Description */}
-            <div className="mb-4">
-            <p className="text-sm"><strong className="text-white/70">Publisher:</strong> {book?.publisher ?? "Unknown"}</p>
-            <p className="text-sm mt-2 text-white/80">
-                {book?.abstract ?? "No description available."}
-            </p>
-            </div>
+    <div className="fixed h-screen bg-black/80 z-100 w-screen overflow-y-auto  ">
+        <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0 " >
+            <div className="relative transform overflow-hidden rounded-lg  text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg" >
+            <div className="  bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10 border border-gray-800 rounded-lg rounded-b-none px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                <div className="mt-4 p-3">
+                    <div className="flex flex-col ">
+                        <h3 className="text-2xl font-bold text-orange-400 mb-4 flex items-center gap-2">
+                            <BookOpenText className="w-6 h-6 text-orange-500" />
+                            {book?.title ?? "Unknown"}
+                        </h3>
+                        <h5 className="text-md pl-5 text-white/80">
+                            by: {book?.author ?? "Unknown"}
+                        </h5>
+                        <h5 className="text-sm pl-5 text-white/60">
+                            {book?.publisher ?? "Unknown"}
+                        </h5>
+                        <h5 className="text-[10px] pl-5 text-white/60">
+                            {book?.abstract ?? "No description available"}
+                        </h5>
+                    </div>
 
-            {/* Hold Info */}
-            {book?.hold && (
-            <div className="bg-slate-700/40 p-4 rounded-xl border border-slate-600/40 space-y-3">
-                
-                {/* Highlighted Row */}
-                <div className="flex justify-between items-center">
-                <span className="text-sm font-semibold text-white/70">Hold Date:</span>
-                <span className="text-base font-bold text-green-400">
-                    {book.hold.hold_date}
-                </span>
+                    {book?.hold && (
+                        <div className="max-h-120 p-3 overflow-y-auto grid grid-cols-1 gap-4 cursor-pointer ">
+                                <div
+                                    className="rounded-md bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-20 border border-gray-100 rounded-2xl p-5 shadow-lg hover:shadow-xl transition-shadow duration-200"
+                                >
+                                    <div className="flex flex-col justify-between items-center gap-2 mb-2">
+                                        <div className="flex justify-between items-center  w-full ">
+                                            <span className="font-semibold text-orange-500">Hold Date:</span>
+                                            <span className="text-green-500">{book.hold.hold_date ?? "Unknown"}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center  w-full">
+                                            <span className="font-semibold text-orange-5efsddsdasda00">Queue #: </span>
+                                            <span className="text-red-600">{book.hold.priority ?? "Unknown"}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center  w-full ">
+                                            <span className="font-semibold text-orange-300">Status:</span>
+                                            <span className="text-blue">{book.hold.status ?? "Pending"}</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col gap-2 text-sm">
+                                        <div className="flex justify-between items-center  w-full">
+                                            <span className="font-medium text-orange-300">Patron ID:</span>
+                                            <span className="text-gray-200">{book.hold.patron_id ?? "Unknown"}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center  w-full ">
+                                            <span className="font-medium text-orange-300">Pickup Library:</span>
+                                            <span className="text-gray-200">{book.hold.pickup_library_id ?? "Unknown"}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center  w-full ">
+                                            <span className="font-medium text-orange-300">Expiration Date:</span>
+                                            <span className="text-gray-200">{book.hold.expiration_date ?? "N/A"}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center  w-full ">
+                                            <span className="font-medium text-orange-300">Item ID:</span>
+                                            <span className="text-gray-200">{book.hold.item_id ?? "N/A"}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center  w-full ">
+                                            <span className="font-medium text-orange-300">Item level:</span>
+                                            <span className="text-gray-200">{book.hold.item_level ?? "Unknown"}</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-end">
+                                        <span className="inline-block px-3 py-1 rounded-full bg-orange-100 text-orange-600 text-xs font-semibold">
+                                            {book.hold.hold_id}
+                                        </span>
+                                    </div>
+                                </div>
+                        </div>
+                    )}
+
                 </div>
-
-                <div className="flex justify-between items-center">
-                <span className="text-sm font-semibold text-white/70">Priority:</span>
-                <span className={`text-base font-bold ${book.hold.priority === 1 ? "text-yellow-400" : "text-blue-400"}`}>
-                    {book.hold.priority}
-                </span>
-                </div>
-
-                <hr className="border-slate-600/40" />
-
-                {/* Other Info */}
-                <p className="text-sm"><strong>Hold ID:</strong> {book.hold.hold_id}</p>
-                <p className="text-sm"><strong>Patron ID:</strong> {book.hold.patron_id}</p>
-                <p className="text-sm"><strong>Pickup Library:</strong> {book.hold.pickup_library_id}</p>
-                <p className="text-sm"><strong>Expiration Date:</strong> {book.hold.expiration_date}</p>
-                <p className="text-sm"><strong>Item ID:</strong> {book.hold.item_id}</p>
-                <p className="text-sm"><strong>Item Level:</strong> {book.hold.item_level ? "Yes" : "No"}</p>
-                <p className="text-sm"><strong>Status:</strong> {book.hold.status ?? "Pending"}</p>
             </div>
-            )}
-
-            {/* Actions */}
-            <div className="flex justify-end gap-3 mt-6">
-            <button onClick={onClose} className="bg-gray-500 hover:bg-gray-600 px-4 py-2 rounded-lg text-sm cursor-pointer">
-                Close
-            </button>
+            <div className="bg-gray-900 border-t border-gray-800 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                <button
+                    onClick={onClose}
+                    className="cursor-pointer inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto"
+                    type="button"
+                    >
+                    Close
+                </button>
+            </div>
             </div>
         </div>
     </div>
 );
 
+// const Modal = ({ book, onClose }: { book: any; onClose: () => void }) => (
+//     <div className="fixed px-5 inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
+//         <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-6 rounded-2xl max-w-md w-full text-white shadow-2xl border border-white/10">
+            
+//             {/* Title + Author */}
+//             <h2 className="text-2xl font-bold text-orange-400 mb-1">{book?.title}</h2>
+//             <p className="text-sm text-white/60 mb-4">by {book?.author ?? "Unknown"}</p>
+            
+//             {/* Publisher & Description */}
+//             <div className="mb-4">
+//             <p className="text-sm"><strong className="text-white/70">Publisher:</strong> {book?.publisher ?? "Unknown"}</p>
+//             <p className="text-sm mt-2 text-white/80">
+//                 {book?.abstract ?? "No description available."}
+//             </p>
+//             </div>
 
+//             {/* Hold Info */}
+//             {book?.hold && (
+//             <div className="bg-slate-700/40 p-4 rounded-xl border border-slate-600/40 space-y-3">
+                
+//                 {/* Highlighted Row */}
+//                 <div className="flex justify-between items-center">
+//                 <span className="text-sm font-semibold text-white/70">Hold Date:</span>
+//                 <span className="text-base font-bold text-green-400">
+//                     {book.hold.hold_date}
+//                 </span>
+//                 </div>
+
+//                 <div className="flex justify-between items-center">
+//                 <span className="text-sm font-semibold text-white/70">Priority:</span>
+//                 <span className={`text-base font-bold ${book.hold.priority === 1 ? "text-yellow-400" : "text-blue-400"}`}>
+//                     {book.hold.priority}
+//                 </span>
+//                 </div>
+
+//                 <hr className="border-slate-600/40" />
+
+//                 {/* Other Info */}
+//                 <p className="text-sm"><strong>Hold ID:</strong> {book.hold.hold_id}</p>
+//                 <p className="text-sm"><strong>Patron ID:</strong> {book.hold.patron_id}</p>
+//                 <p className="text-sm"><strong>Pickup Library:</strong> {book.hold.pickup_library_id}</p>
+//                 <p className="text-sm"><strong>Expiration Date:</strong> {book.hold.expiration_date}</p>
+//                 <p className="text-sm"><strong>Item ID:</strong> {book.hold.item_id}</p>
+//                 <p className="text-sm"><strong>Item Level:</strong> {book.hold.item_level ? "Yes" : "No"}</p>
+//                 <p className="text-sm"><strong>Status:</strong> {book.hold.status ?? "Pending"}</p>
+//             </div>
+//             )}
+
+//             {/* Actions */}
+//             <div className="flex justify-end gap-3 mt-6">
+//             <button onClick={onClose} className="bg-gray-500 hover:bg-gray-600 px-4 py-2 rounded-lg text-sm cursor-pointer">
+//                 Close
+//             </button>
+//             </div>
+//         </div>
+//     </div>
+// );
