@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useState } from "react";
-import { SettingsIcon, LogOutIcon, BadgeCheckIcon, PanelLeftIcon, SendIcon, User2Icon, MicIcon, Settings, CrossIcon, SidebarCloseIcon, CircleX } from "lucide-react";
+import { SettingsIcon, LogOutIcon, BadgeCheckIcon, PanelLeftIcon, SendIcon, User2Icon, MicIcon, Settings, CrossIcon, SidebarCloseIcon, CircleX, Book, BookIcon, BookOpenText, EllipsisIcon } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ToastContainer, toast } from 'react-toastify';
 import { useRouter } from 'next/navigation';
@@ -57,7 +57,7 @@ export default function ChatWindow({
     const [modalError, setModalError] = useState<string | null>(null);
     // RESERVE BOOK MODAL
     const [reserveModalOpen, setReserveModalOpen] = useState(false);
-    const [reserveData, setReserveData] = useState<{ patron_id: number; biblio_id: number } | null>(null);
+    const [reserveData, setReserveData] = useState<{ patron_id: number; biblio_id: number; book_title: string } | null>(null);
     const [holdDate, setHoldDate] = useState<string>("");
     const [holdModal, setHoldModal] =  useState<any>(null);
     const [holdModalOpen, setHoldModalOpen] = useState(false);
@@ -105,7 +105,6 @@ export default function ChatWindow({
 
 
     //Loading
-
     const [loadingOpen, setIsLoadingOpen] = useState(false);
 
     //Router
@@ -120,6 +119,9 @@ export default function ChatWindow({
     //guest
     const [isGuest, setIsGuest] = useState<boolean>(false);
 
+
+
+    // Load the Local Storage Variables.
     useEffect(() => {
         const storedPatronId = localStorage.getItem('patron_id');
         const storedCardNumber = localStorage.getItem('cardNumber');
@@ -223,7 +225,7 @@ export default function ChatWindow({
                             reason = "You already have this item on hold.";
                         }
                         else if (reason.includes("tooManyHoldsForThisRecord")){
-                            reason = "You already have too many items on hold.";
+                            reason = "You are not allowed to have two or more holds for this record.";
                         }
                         handleToast(`Item ${item.item_id} could not be reserved: ${reason}`, "warning");
                         continue;
@@ -416,13 +418,6 @@ export default function ChatWindow({
         setLogoutModalOpen(true);
     }
 
-    // DEBUG ONLY
-    // useEffect(() => {
-    //     console.log ("card number", localStorage.getItem('cardNumber'));
-    //     console.log ("patron id ", localStorage.getItem('patron_id'));
-    //     console.log ("is guest", isGuest)
-    //     console.log ("username", localStorage.getItem('username'));
-    // }) 
     // SCROLL
     useEffect(() => {
         if (chatContainerRef.current) {
@@ -637,21 +632,24 @@ export default function ChatWindow({
             {chatHistory.map((item, idx) => {
                 if (item.type === "user") {
                 return (
-                    <div key={idx} className="flex w-full justify-end text-wrap gap-3 p-4">
-                    <div className="p-3 max-w-[80%] rounded-lg space-y-4 bg-gradient-to-r from-orange-500 via-orange-600 to-orange-500 text-white shadow-orange-500/20">
-                        <p>{item.message}</p>
-                    </div>
-                    <div>
-                        <Image
-                            src={isGuest ? "/Default_User.jpg" : "/default-user.webp"}
-                            alt="User"
-                            width={40}
-                            height={40}
-                            className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30"
-                            onClick={() => setDropdownOpen(!dropdownOpen)}
-                        />
-                    </div>
-                    </div>
+
+                        <div key={idx} className="flex w-full justify-end items-center text-wrap gap-3 p-4">
+                            <div className="p-3 max-w-[80%] rounded-lg space-y-4 bg-gradient-to-r from-orange-500 via-orange-600 to-orange-500 text-white shadow-orange-500/20">
+                                <p>{item.message}</p>
+                            </div>
+                            
+                            <div>
+                                <Image
+                                    src={isGuest ? "/Default_User.jpg" : "/default-user.webp"}
+                                    alt="User"
+                                    width={40}
+                                    height={40}
+                                    className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30"
+                                    onClick={() => setDropdownOpen(!dropdownOpen)}
+                                />
+                            </div>
+                        </div>
+
                 );
                 } else if (item.type === "ai") {
                 return (
@@ -723,7 +721,6 @@ export default function ChatWindow({
                                 border-l-4 border-orange-500/100
                                 backdrop-blur-sm bg-opacity-80 bg-clip-padding
                                 hover:shadow-lg transition-shadow duration-300 ">
-                                {/* Book details as before, but use book.quantity_available */}
                                 <div className="flex gap-2 h-12 justify-between items-center">
                                     <h1 className="text-sm sm:text-lg lg:text-2xl capitalize font-bold w-3/4 line-clamp-2">
                                         {book.title.length > 60 ? `${book.title.substring(0, 57)}...` : book.title}
@@ -763,8 +760,10 @@ export default function ChatWindow({
                                         className="cursor-pointer flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-md font-medium text-sm"
                                         onClick={() => {
                                             setReserveData({
-                                                patron_id: localStorage.getItem("patron_id") ? Number(localStorage.getItem("patron_id")) : 0,
-                                                biblio_id: book.biblio_id,                                                
+                                                // patron_id: localStorage.getItem("patron_id") ? Number(localStorage.getItem("patron_id")) : 0,
+                                                patron_id: patronId ? Number(patronId) : 0,
+                                                book_title: book.title,
+                                                biblio_id: book.biblio_id,
                                             });
                                             setReserveModalOpen(true);
                                         }}
@@ -782,7 +781,7 @@ export default function ChatWindow({
                                 {/* Pagination Controls */}
                                 <div className="flex flex-wrap gap-2 items-center mt-1   justify-between">
                                     <div>
-                                    <button
+                                    {/* <button
                                         className="cursor-pointer px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-md"
                                             onClick={() => {
                                                 setShowAllBooks(item.books);
@@ -790,7 +789,7 @@ export default function ChatWindow({
                                             }}
                                         >
                                             Show All
-                                    </button>
+                                    </button> */}
                                     </div>
                                     <div className=" flex items-center gap-2">
                                         <button
@@ -853,28 +852,6 @@ export default function ChatWindow({
             )}
             </div>
 
-            {/* Reminders */}
-            {/* {reminders && (
-                <div className="w-full flex flex-wrap gap-3 sm:gap-4 md:gap-5 justify-center pt-3 px-1">
-                    <div className=" cursor-pointer select-none z-11 bg-yellow-100 dark:bg-yellow-900 border-l-4 border-yellow-500 dark:border-yellow-700 text-yellow-900 dark:text-yellow-100 p-2 rounded-lg flex items-center transition duration-300 ease-in-out hover:bg-yellow-200 dark:hover:bg-yellow-800 transform hover:scale-105">
-                        <p className="text-xs font-semibold">
-                            {}
-                        </p>
-                    </div>
-                    <div className=" cursor-pointer select-none z-11 bg-yellow-100 dark:bg-yellow-900 border-l-4 border-yellow-500 dark:border-yellow-700 text-yellow-900 dark:text-yellow-100 p-2 rounded-lg flex items-center transition duration-300 ease-in-out hover:bg-yellow-200 dark:hover:bg-yellow-800 transform hover:scale-105">
-                        <p className="text-xs font-semibold">
-                            Warning - Anton is not working.
-                        </p>
-                    </div>
-                    <div className=" cursor-pointer select-none z-11 bg-yellow-100 dark:bg-yellow-900 border-l-4 border-yellow-500 dark:border-yellow-700 text-yellow-900 dark:text-yellow-100 p-2 rounded-lg flex items-center transition duration-300 ease-in-out hover:bg-yellow-200 dark:hover:bg-yellow-800 transform hover:scale-105">
-                        <p className="text-xs font-semibold">
-                            Warning - Anton is not working.
-                        </p>
-                    </div>
-                </div>
-            )} */}
-
-
             {/* Chat Input */}
             <div className="w-full flex justify-center pb-8 pt-2">
                 <div className="flex items-center bg-[rgba(24,28,44,0.88)] shadow-lg rounded-2xl px-3 py-2 gap-2 max-w-2xl border border-slate-800/40 backdrop-blur-sm lg:w-full w-3/4">
@@ -900,229 +877,271 @@ export default function ChatWindow({
                     </AnimatePresence>
                 </div>
             </div>
+
+
+
             {/* Book Info Modal */}
             {modalOpen && (
-            <div className="p-5 fixed inset-0 z-50 flex items-center justify-center bg-black/30" style={{ backdropFilter: "blur(2px)" }}>
-                <div className=" relative bg-gradient-to-br from-slate-800 via-blue-900/90 to-slate-700 p-8 rounded-2xl max-w-xl md:max-w-2xl lg:max-w-3xl p-5 shadow-2xl ring-1 ring-slate-700/50 text-white border border-orange-400/30">
-                    <button className="cursor-pointer absolute top-3 right-3 text-slate-400 hover:text-orange-500 text-xl font-bold"
-                        onClick={() => setModalOpen(false)}
-                    >
-                        <CircleX style={{ width: 24, height: 24 }} />
-                    </button>
-
-                {modalLoading ? (
-                    <div className="animate-pulse flex flex-col items-center gap-4 w-full justify-center">
-                        <div>
-                            <div className="w-48 h-6 bg-slate-400 rounded-md"></div>
-                            <div className="w-28 h-4 bg-slate-400 mx-auto mt-3 rounded-md"></div>
+                <div className="z-99 h-screen bg-black/80 w-full absolute ">
+                    <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0" >
+                        <div className="relative transform overflow-hidden rounded-lg bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10 border border-gray-800 rounded-b-none text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg" >
+                            <div className="w-[100%] bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10  rounded-lg rounded-b-none px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                                <div className="sm:flex sm:items-start">
+                                    <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
+                                        <div className="mt-2">
+                                            {modalLoading ? (
+                                                <div className="animate-pulse flex flex-col items-center gap-4 w-full justify-center">
+                                                    <div>
+                                                        <div className="w-48 h-6 bg-slate-400 rounded-md"></div>
+                                                        <div className="w-28 h-4 bg-slate-400 mx-auto mt-3 rounded-md"></div>
+                                                    </div>
+                                                    <div className="h-7 bg-slate-400 w-full rounded-md"></div>
+                                                    <div className="h-7 bg-slate-400 w-full rounded-md"></div>
+                                                    <div className="h-7 bg-slate-400 w-full rounded-md"></div>
+                                                    <div className="h-7 bg-slate-400 w-1/2 rounded-md"></div>
+                                                </div>
+                                            ): modalError ? (
+                                                <div className="text-center py-10 text-red-400 font-semibold text-lg">
+                                                    {modalError}
+                                                </div>
+                                            ): modalData ? (
+                                                <div className="flex flex-col text-left">
+                                                    <div className="flex flex-col ">
+                                                        <h3 className="text-2xl font-bold text-orange-400 mb-2 flex items-center gap-2">
+                                                            {/* <BookOpenText className="w-auto h-auto text-orange-500" /> */}
+                                                            {modalData.title ?? "Unknown"}
+                                                        </h3>
+                                                        <h5 className="text-md text-white/80">
+                                                            by: {modalData.author ?? "Unknown"}
+                                                        </h5>
+                                                        <h5 className="text-sm text-white/60">
+                                                            {modalData.publisher ?? "Unknown"}
+                                                        </h5>
+                                                    </div>
+                                                    <div className="max-h-120 p-3 overflow-y-auto grid grid-cols-1 gap-4 cursor-pointer ">
+                                                        <div className="rounded-md bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-20 border border-gray-100 rounded-2xl p-5 shadow-lg hover:shadow-xl transition-shadow duration-200">\
+                                                            <div className="max-h-80 overflow-y-auto flex flex-col justify-between items-center gap-2 mb-2">
+                                                                <div className="flex justify-between items-center  w-full ">
+                                                                    <span className="font-semibold text-orange-500">Publication Place:</span>
+                                                                    <span className="text-gray-200 text-right">{modalData.publication_place ?? "-"}</span>
+                                                                </div>
+                                                                <div className="flex justify-between items-center  w-full ">
+                                                                    <span className="font-semibold text-orange-500">Year of Publication:</span>
+                                                                    <span className="text-gray-200">{modalData.copyright_date ?? "-"}</span>
+                                                                </div>
+                                                                <div className="flex justify-between items-center  w-full ">
+                                                                    <span className="font-semibold text-orange-300">ISBN:</span>
+                                                                    <span className="text-gray-200 text-right">{modalData.isbn ?? "-"}</span>
+                                                                </div>
+                                                                <div className="flex justify-between items-center  w-full ">
+                                                                    <span className="font-semibold text-orange-300">Biblio Id:</span>
+                                                                    <span className="text-gray-200 text-right">{modalData.biblio_id ?? "-"}</span>
+                                                                </div>
+                                                                <div className="flex justify-between items-center  w-full ">
+                                                                    <span className="font-semibold text-orange-300">Item Type:</span>
+                                                                    <span className="text-gray-200 text-right">{modalData.item_type ?? "-"}</span>
+                                                                </div>
+                                                                <div className="flex justify-between items-center  w-full ">
+                                                                    <span className="font-semibold text-orange-300">Series:</span>
+                                                                    <span className="text-gray-200 text-right">{modalData.series_title ?? "-"}</span>
+                                                                </div>
+                                                                <div className="flex justify-between items-center  w-full ">
+                                                                    <span className="font-semibold text-orange-300">Edition:</span>
+                                                                    <span className="text-gray-200 text-right">{modalData.edition_statement ?? "-"}</span>
+                                                                </div>
+                                                                <div className="flex justify-between items-center  w-full ">
+                                                                    <span className="font-semibold text-orange-300">Collection:</span>
+                                                                    <span className="text-gray-200 text-right">{modalData.collection_title ?? "-"}</span>
+                                                                </div>
+                                                                <div className="flex justify-between items-center  w-full ">
+                                                                    <span className="font-semibold text-orange-300">Note:</span>
+                                                                    <span className="text-gray-200 text-right">{modalData.notes ?? "-"}</span>
+                                                                </div>
+                                                                <div className="flex justify-between items-center  w-full ">
+                                                                    <span className="font-semibold text-orange-300">Abstract:</span>
+                                                                    <span className="text-gray-200 text-right">{modalData.abstract ?? "-"}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <span className="mt-5 text-center text-white/60 italic text-sm">Biblio record last updated: {modalData.timestamp?.replace("T", " ").replace("+08:00", "") || "—"}</span>
+                                                </div>
+                                                
+                                            ) : null}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="bg-gray-900 border-t border-gray-800 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                                <button
+                                    onClick={() => {
+                                        setModalOpen(false);
+                                        setModalData(null);
+                                        setModalError(null);
+                                        setModalLoading(false);
+                                    }}
+                                    className="cursor-pointer inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto"
+                                    type="button"
+                                    >
+                                    Continue
+                                </button>
+                            </div>
                         </div>
-                        <div className="h-7 bg-slate-400 w-full rounded-md"></div>
-                            <div className="h-7 bg-slate-400 w-full rounded-md"></div>
-                            <div className="h-7 bg-slate-400 w-full rounded-md"></div>
-                            <div className="h-7 bg-slate-400 w-1/2 rounded-md"></div>
                     </div>
-                ) : modalError ? (
-                    <div className="text-center py-10 text-red-400 font-semibold text-lg">
-                    {modalError}
-                    </div>
-                ) : modalData ? (
-                    <div>
-                    <h2 className="text-3xl font-bold mb-2 leading-tight text-orange-400 drop-shadow">
-                        {modalData.title || "Untitled"}
-                    </h2>
-                    <div className="mb-6 text-slate-200 italic text-base">
-                        {modalData.subtitle}
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-4 text-base">
-                        <div>
-                        <span className="text-slate-400">Author:</span>
-                        <span className="ml-2 text-slate-100 font-semibold">
-                            {modalData.author || "—"}
-                        </span>
-                        </div>
-                        <div>
-                        <span className="text-slate-400">Year:</span>
-                        <span className="ml-2 text-slate-100 font-semibold">
-                            {modalData.copyright_date || "—"}
-                        </span>
-                        </div>
-                        <div>
-                        <span className="text-slate-400">Publisher:</span>
-                        <span className="ml-2 text-slate-100 font-semibold">
-                            {modalData.publisher || "—"}
-                        </span>
-                        </div>
-                        <div>
-                        <span className="text-slate-400">Publication Place:</span>
-                        <span className="ml-2 text-slate-100 font-semibold">
-                            {modalData.publication_place || "—"}
-                        </span>
-                        </div>
-                        <div>
-                        <span className="text-slate-400">ISBN:</span>
-                        <span className="ml-2 text-slate-100 font-semibold">
-                            {modalData.isbn || "—"}
-                        </span>
-                        </div>
-                        <div>
-                        <span className="text-slate-400">Biblio ID:</span>
-                        <span className="ml-2 text-slate-100 font-semibold">
-                            {modalData.biblio_id || "—"}
-                        </span>
-                        </div>
-                        <div>
-                        <span className="text-slate-400">Item Type:</span>
-                        <span className="ml-2 text-slate-100 font-semibold">
-                            {modalData.item_type || "—"}
-                        </span>
-                        </div>
-                        <div>
-                        <span className="text-slate-400">Series Title:</span>
-                        <span className="ml-2 text-slate-100 font-semibold">
-                            {modalData.series_title || "—"}
-                        </span>
-                        </div>
-                        <div>
-                        <span className="text-slate-400">Edition:</span>
-                        <span className="ml-2 text-slate-100 font-semibold">
-                            {modalData.edition_statement || "—"}
-                        </span>
-                        </div>
-                        <div>
-                        <span className="text-slate-400">Collection Title:</span>
-                        <span className="ml-2 text-slate-100 font-semibold">
-                            {modalData.collection_title || "—"}
-                        </span>
-                        </div>
-                        <div>
-                        <span className="text-slate-400">Notes:</span>
-                        <span className="ml-2 text-slate-100 font-semibold">
-                            {modalData.notes || "—"}
-                        </span>
-                        </div>
-                        <div>
-                        <span className="text-slate-400">Abstract:</span>
-                        <span className="ml-2 text-slate-100 font-semibold">
-                            {modalData.abstract || "—"}
-                        </span>
-                        </div>
-                        <div>
-                        <span className="text-slate-400">Availability:</span>
-                        <span className="ml-2 text-green-300 font-semibold">
-                            {modalData.quantity_available ?? "—"}
-                        </span>
-                        </div>
-                        <div>
-                        <span className="text-slate-400">Created:</span>
-                        <span className="ml-2 text-slate-100 font-semibold">
-                            {modalData.creation_date?.slice(0,10) || "—"}
-                        </span>
-                        </div>
-                        {/* You can continue for other fields as needed */}
-                    </div>
-
-                    {/* Divider */}
-                    <div className="mt-6 border-t border-slate-600/50 pt-4 text-slate-400 text-xs">
-                        <span>Biblio record last updated: {modalData.timestamp?.replace("T", " ").replace("+08:00", "") || "—"}</span>
-                    </div>
-                    </div>
-                ) : null}
                 </div>
-            </div>
             )}
-
-
             {/* Reservation Modal */}
             {reserveModalOpen && reserveData && (
-            <div className="fixed inset-0 z-50 p-5 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-                <div className="relative w-full max-w-lg bg-gradient-to-br from-slate-800 via-purple-900/90 to-slate-700 text-white rounded-2xl shadow-2xl ring-1 ring-purple-400/30 border border-purple-300/20 p-6 sm:p-8">
-                
-                {/* Close Button */}
-                <button
-                    onClick={() => setReserveModalOpen(false)}
-                    className="absolute top-4 right-4 text-slate-400 hover:text-purple-400 transition-colors cursor-pointer"
-                    aria-label="Close"
-                >
-                    <CircleX size={24} />
-                </button>
+                <div className="z-99 h-screen bg-black/80 w-full absolute ">
+                    <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0" >
+                        <div className="relative transform overflow-hidden rounded-lg bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10 border border-gray-800 rounded-b-none text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg" >
+                            <div className="w-[100%] bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10  rounded-lg rounded-b-none px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                                <div className="sm:flex sm:items-start">
+                                    <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
+                                        <div className="mt-2">
+                                                <div className="flex flex-col text-left">
+                                                    <div className="flex flex-col ">
+                                                        <h3 className="text-2xl font-bold text-orange-400 mb-2 flex items-center gap-2">
+                                                            <BookOpenText className="w-auto h-auto text-orange-500" />
+                                                            <span>Reserve Book</span>
+                                                        </h3>
+                                                        <p className="text-sm italic text-white/70">
+                                                            Reserve a copy of <span className="font-bold text-orange-600">{reserveData.book_title}. </span> Please provide your details below and make sure to select a pickup library.
+                                                        </p>
+                                                    </div>
+                                                    <div className="max-h-120 p-3 overflow-y-auto grid grid-cols-1 gap-4 cursor-pointer ">
+                                                        <div className="rounded-md bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-20 border border-gray-100 rounded-2xl px-4 shadow-lg hover:shadow-xl transition-shadow duration-200">\
+                                                            <div className="max-h-80 overflow-y-auto flex flex-col justify-between items-center gap-2 ">
+                                                                <div className="flex justify-between items-center  w-full ">
+                                                                    <span className="font-semibold text-orange-300">Name:</span>
+                                                                    <span className="text-gray-200 text-right">{userName ? userName : "Please Login first."}</span>
+                                                                </div>
+                                                                <div className="flex justify-between items-center  w-full ">
+                                                                    <span className="font-semibold text-orange-300">Patron ID:</span>
+                                                                    <span className="text-gray-200 text-right">{reserveData.patron_id ? reserveData.patron_id : "Please Login first."}</span>
+                                                                </div>
+                                                                <div className="flex justify-between items-center  w-full ">
+                                                                    <span className="font-semibold text-orange-300">Biblio ID:</span>
+                                                                    <span className="text-gray-200 text-right">{reserveData.biblio_id ?? "N/A"}</span>
+                                                                </div>
+                                                                <div className="flex justify-between items-center  w-full ">
+                                                                    <span className="font-semibold text-orange-300">Available Copies:</span>
+                                                                    <span className="text-gray-200 text-right">
+                                                                        {availableCount === 0 || availableCount === null
+                                                                            ? "No available items to reserve."
+                                                                            : availableCount}
+                                                                        </span>
+                                                                </div>
+                                                                <div className="mb-2">
+                                                                    <label htmlFor="library" className="block text-orange-300 mb-2 text-sm">
+                                                                        Select Pickup Library:
+                                                                    </label>
+                                                                    <select
+                                                                        id="library"
+                                                                        value={selectedLibrary}
+                                                                        onChange={(e) => setSelectedLibrary(e.target.value)}
+                                                                        className="w-full bg-slate-900 text-white border border-purple-500 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                                                    >
+                                                                        <option value="" disabled>--</option>
+                                                                        {libraries.map((lib) => (
+                                                                            <option key={lib.library_id} value={lib.library_id}>
+                                                                            {lib.name}
+                                                                            </option>
+                                                                        ))}
+                                                                    </select>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
 
-                {/* Header */}
-                <h2 className="text-3xl font-semibold text-purple-300 mb-6">Reserve Book</h2>
-
-                {/* Patron & Biblio Info */}
-                <div className="space-y-3 mb-4 text-sm sm:text-base">
-                    <div className="flex justify-between">
-                    <span className="text-slate-400">Patron ID:</span>
-                    <span className="text-slate-100 font-medium">
-                        {reserveData.patron_id ? reserveData.patron_id : "Please Login first."}
-                    </span>
+                                                </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="bg-gray-900 border-t border-gray-800 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                                <button
+                                    onClick={() => {
+                                        handleReserve();
+                                    }}
+                                    className="mb-2 cursor-pointer inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto"
+                                    type="button"
+                                    >
+                                    Continue
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setReserveModalOpen(false);
+                                        setReserveData(null);
+                                    }}
+                                    className="mb-2 cursor-pointer inline-flex w-full justify-center rounded-md bg-gray-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto"
+                                    type="button"
+                                    >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <div className="flex justify-between">
-                    <span className="text-slate-400">Biblio ID:</span>
-                    <span className="text-slate-100 font-medium">{reserveData.biblio_id}</span>
-                    </div>
-                    <div className="flex justify-between">
-                    <span className="text-slate-400">Available Copies:</span>
-                    <span className="text-slate-100 font-medium">
-                    {availableCount === 0 || availableCount === null
-                        ? "No available items to reserve."
-                        : availableCount}
-                    </span>
-                    </div>
                 </div>
-
-                {/* Library Selector */}
-                <div className="mb-2">
-                    <label htmlFor="library" className="block text-slate-400 mb-2 text-sm">
-                    Select Pickup Library:
-                    </label>
-                    <select
-                        id="library"
-                        value={selectedLibrary}
-                        onChange={(e) => setSelectedLibrary(e.target.value)}
-                        className="w-full bg-slate-900 text-white border border-purple-500 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    >
-                        <option value="">-- Select a Library --</option>
-                        {libraries.map((lib) => (
-                            <option key={lib.library_id} value={lib.library_id}>
-                            {lib.name}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-                {/* Date Selector
-                <div className="mb-6">
-                    <label htmlFor="date" className="block text-slate-400 mb-2 text-sm">
-                    Select Hold Date:
-                    </label>
-                    <input
-                        type="date"
-                        id="date"
-                        value={holdDate}
-                        onChange={(e) => setHoldDate(e.target.value)}
-                        min={new Date().toISOString().split('T')[0]}
-                        max={new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
-                        className="w-full bg-slate-900 text-white border border-purple-500 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    />
-                </div> */}
-                {/* Footer Buttons */}
-                <div className="flex justify-end gap-3">
-                    <button
-                    onClick={() => {}}
-                    className="px-4 py-2 rounded-md border border-slate-500 text-slate-300 hover:bg-slate-800 transition cursor-pointer"
-                    >
-                    Cancel
-                    </button>
-                    <button
-                        onClick={() => {handleReserve(); }}
-                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-md transition cursor-pointer"
-                    >
-                        Confirm Reserve
-                    </button>
-                </div>
-                </div>
-            </div>
+            // <div className="fixed inset-0 z-50 p-5 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+            //     <div className="relative w-full max-w-lg bg-gradient-to-br from-slate-800 via-purple-900/90 to-slate-700 text-white rounded-2xl shadow-2xl ring-1 ring-purple-400/30 border border-purple-300/20 p-6 sm:p-8">
+            //     {/* Close Button */}
+            //     <button onClick={() => setReserveModalOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-purple-400 transition-colors cursor-pointer" aria-label="Close">
+            //         <CircleX size={24} />
+            //     </button>
+            //     {/* Header */}
+            //     <h2 className="text-3xl font-semibold text-purple-300 mb-6">Reserve Book</h2>
+            //     {/* Patron & Biblio Info */}
+            //     <div className="space-y-3 mb-4 text-sm sm:text-base">
+            //         <div className="flex justify-between">
+            //             <span className="text-slate-400">Patron ID:</span>
+            //             <span className="text-slate-100 font-medium">
+            //             {reserveData.patron_id ? reserveData.patron_id : "Please Login first."}
+            //             </span>
+            //         </div>
+            //         <div className="flex justify-between">
+            //             <span className="text-slate-400">Biblio ID:</span>
+            //             <span className="text-slate-100 font-medium">{reserveData.biblio_id}</span>
+            //         </div>
+            //         <div className="flex justify-between">
+            //             <span className="text-slate-400">Available Copies:</span>
+            //             <span className="text-slate-100 font-medium">
+            //             {availableCount === 0 || availableCount === null
+            //                 ? "No available items to reserve."
+            //                 : availableCount}
+            //             </span>
+            //         </div>
+            //     </div>
+            //         {/* Library Selector */}
+            //         <div className="mb-2">
+            //             <label htmlFor="library" className="block text-slate-400 mb-2 text-sm">
+            //             Select Pickup Library:
+            //             </label>
+            //             <select
+            //                 id="library"
+            //                 value={selectedLibrary}
+            //                 onChange={(e) => setSelectedLibrary(e.target.value)}
+            //                 className="w-full bg-slate-900 text-white border border-purple-500 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            //             >
+            //                 <option value="">-- Select a Library --</option>
+            //                 {libraries.map((lib) => (
+            //                     <option key={lib.library_id} value={lib.library_id}>
+            //                     {lib.name}
+            //                     </option>
+            //                 ))}
+            //             </select>
+            //         </div>
+            //         {/* Footer Buttons */}
+            //         <div className="flex justify-end gap-3">
+            //             <button
+            //                 onClick={() => {handleReserve(); }}
+            //                 className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-md transition cursor-pointer"
+            //             >
+            //                 Confirm Reserve
+            //             </button>
+            //         </div>
+            //     </div>
+            // </div>
             )}
 
             {/* Reservation receipt */}
@@ -1277,12 +1296,12 @@ export default function ChatWindow({
             )}
             {/* Show All Modal */}
             {showAllModalOpen && showAllBooks && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-                    <div className="relative w-full max-w-2xl bg-gradient-to-br from-slate-800 via-blue-900/90 to-slate-700 text-white rounded-2xl shadow-2xl ring-1 ring-orange-400/30 border border-orange-300/20 p-6 sm:p-8 overflow-y-auto max-h-[90vh]">
+                <div className="fixed inset-0 z-15 flex items-center justify-center bg-black/40 backdrop-blur-sm p-2">
+                    <div className="relative w-full max-w-2xl bg-gradient-to-br from-slate-800 via-blue-900/90 to-slate-700 text-white  shadow-2xl ring-1 ring-orange-400/30 border border-orange-300/20 p-6 sm:p-8 overflow-y-auto max-h-[90vh]">
                         {/* Close Button */}
                         <button
                             onClick={() => setShowAllModalOpen(false)}
-                            className="absolute top-4 right-4 text-slate-400 hover:text-orange-400 transition-colors cursor-pointer"
+                            className="fixed top-4 right-4 text-slate-400 hover:text-orange-400 transition-colors cursor-pointer"
                             aria-label="Close"
                         >
                             <CircleX size={24} />
@@ -1335,11 +1354,13 @@ export default function ChatWindow({
                                                 className="cursor-pointer flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-md font-medium text-sm"
                                                 onClick={() => {
                                                     setReserveData({
-                                                        patron_id: localStorage.getItem("patron_id") ? Number(localStorage.getItem("patron_id")) : 0,
+                                                        // patron_id: localStorage.getItem("patron_id") ? Number(localStorage.getItem("patron_id")) : 0,
+                                                        patron_id: patronId ? Number(patronId) : 0,
+                                                        book_title: book.title,
                                                         biblio_id: book.biblio_id,
                                                     });
                                                     setReserveModalOpen(true);
-                                                    setShowAllModalOpen(false);
+                                                    // setShowAllModalOpen(false);
                                                 }}
                                             >
                                                 📚 Reserve Book
@@ -1348,7 +1369,7 @@ export default function ChatWindow({
                                                 className="cursor-pointer flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-md font-medium text-sm"
                                                 onClick={() => {
                                                     handleMoreInfo(book.biblio_id);
-                                                    setShowAllModalOpen(false);
+                                                    // setShowAllModalOpen(false);
                                                 }}
                                             >
                                                 🧾 More Info

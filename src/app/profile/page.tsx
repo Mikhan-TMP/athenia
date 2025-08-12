@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { ToastContainer, toast } from 'react-toastify';
 import { useRouter } from 'next/navigation';
+import Image from "next/image";
 
 
 export default function Profile() {
@@ -375,9 +376,11 @@ export default function Profile() {
                     {/* Profile Card */}
                     <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-slate-800 via-slate-900 to-slate-800 shadow-xl p-6 space-y-5">
                         <div className="flex flex-col items-center text-center space-y-3">
-                        <img
-                            src="/Malee.jfif"
+                        <Image
+                            src="/default-user.webp"
                             alt="User Profile"
+                            width={112}
+                            height={112}
                             className="w-28 h-28 rounded-full ring-2 ring-orange-400 shadow-md object-cover hover:scale-105 transition-transform duration-200 cursor-pointer"
                         />
                         <div>
@@ -560,7 +563,7 @@ export default function Profile() {
             {cancelModal && selectedBook && (
                 <div className="fixed h-screen bg-black/80 z-100 w-screen overflow-y-auto ">
                     <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0" >
-                        <div className="relative transform overflow-hidden rounded-lg bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10 border border-gray-800 rounded-lg rounded-b-none text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg" >
+                        <div className="relative transform overflow-hidden rounded-lg bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10 border border-gray-800 rounded-b-none text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg" >
                         <div className="bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10  rounded-lg rounded-b-none px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
                             <div className="sm:flex sm:items-start">
                             <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10" >

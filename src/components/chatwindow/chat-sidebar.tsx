@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MessageSquarePlus, Settings, Search, MoreHorizontal, Trash2, PanelLeftIcon,
+import { MessageSquarePlus, Settings, Search, MoreHorizontal, Trash2, PanelLeftIcon, Globe2, MegaphoneIcon, Calendar1,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -43,7 +43,7 @@ export default function ChatSidebar({ onSidebarToggle, sidebarOpen }: { onSideba
                     </div>
                 </div>
                 {/* RECENT CHATS */}
-                <div className="border-b  border-white/5 bg-[rgba(13, 17, 31, 1)] flex min-h-0 flex-col gap-2 overflow-auto overflow-y-auto h-[500px]">
+                <div className="   bg-[rgba(13, 17, 31, 1)] flex min-h-100 md:min-h-100 lg:min-h-100 border mt-2 flex-col gap-2 overflow-auto overflow-y-auto max-h-[400px]">
                     <label className="text-sidebar-foreground/70 ring-sidebar-ring flex shrink-0 items-center rounded-md px-2 text-xs font-medium outline-hidden text-[#bdb4b4f7]">
                     Recent Chats
                     </label>
@@ -73,13 +73,26 @@ export default function ChatSidebar({ onSidebarToggle, sidebarOpen }: { onSideba
             </div>
             {/* SETTINGS */}
             <div className=" bg-gradient-to-r from-slate-900/50 to-slate-800/50 border-t border-white/5 bg-[rgba(26,30,44,1)]">
-                <button className="cursor-pointer rounded-lg flex justify-center items-center w-full h-12 w-full gap-2  text-white  transition-all duration-300">
+                <button className="cursor-pointer rounded-lg flex justify-start pl-4 items-center w-full h-12 w-full gap-2  text-white  transition-all duration-300">
+                    <Calendar1 className="h-4 w-4" />
+                    Events
+                </button>
+                <button className="cursor-pointer rounded-lg flex justify-start pl-4 items-center w-full h-12 w-full gap-2  text-white  transition-all duration-300">
+                    <MegaphoneIcon className="h-4 w-4" />
+                    Forums
+                </button>
+                <button className="cursor-pointer rounded-lg flex justify-start pl-4 items-center w-full h-12 w-full gap-2  text-white  transition-all duration-300">
+                    <Globe2 className="h-4 w-4" />
+                    Community
+                </button>
+                <button className="cursor-pointer rounded-lg flex justify-start pl-4 items-center w-full h-12 w-full gap-2  text-white  transition-all duration-300">
                     <Settings className="h-4 w-4" />
                     Settings
                 </button>
+                
                 {/* Footer */}
-                <div className="border-t border-white/5 p-4">
-                    <span className="text-xs text-white/60">© 2025 Ntek Systems Inc</span>
+                <div className="border-t border-white/5 p-2 w-full flex justify-center">
+                    <span className="text-xs text-center text-white/60">© 2025 Ntek Systems Inc</span>
                 </div>
             </div>
         </div>
