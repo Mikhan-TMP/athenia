@@ -439,10 +439,10 @@ export default function ChatWindow({
                     }
                 });
                 if (!res.ok) throw new Error(`Error ${res.status}`);
-                const text = await res.text();
-                console.log("Raw response:", text);
-
-                const data = await res.json();
+                const raw = await res.text();
+                console.log("Raw response:", raw);
+                const data = JSON.parse(raw);
+                setLibraries(data);
                 console.log(data);
                 setLibraries(data);
             } catch (err) {
