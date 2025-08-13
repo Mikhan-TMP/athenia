@@ -65,7 +65,8 @@ export function LoginForm({ setIsGuest }: guestProps) {
                 {
                     headers: {
                         "Content-Type": "application/json",
-                        "Authorization": basicAuth
+                        "Authorization": basicAuth,
+                        "ngrok-skip-browser-warning": "true", // Uncomment if using ngrok
                     }
                 }
             );

@@ -66,7 +66,8 @@ export default function Profile() {
                     headers: {
                         "Authorization": basicAuth,
                         "Content-Type": "application/json",
-                        "Accept": "application/json"
+                        "Accept": "application/json",
+                        "ngrok-skip-browser-warning": "true",
                     },
                 });
 
@@ -87,7 +88,8 @@ export default function Profile() {
                     headers: {
                         "Authorization": basicAuth,
                         "Content-Type": "application/json",
-                        "Accept": "application/json"
+                        "Accept": "application/json",
+                        "ngrok-skip-browser-warning": "true",
                     },
                 });
                 if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
@@ -115,7 +117,8 @@ export default function Profile() {
                     headers: {
                         "Authorization": basicAuth,
                         "Content-Type": "application/json",
-                        "Accept": "application/json"
+                        "Accept": "application/json",
+                        "ngrok-skip-browser-warning": "true",
                     },
                 });
 
@@ -164,7 +167,8 @@ export default function Profile() {
                         headers: {
                             "Authorization": basicAuth,
                             "Content-Type": "application/json",
-                            "Accept": "application/json"
+                            "Accept": "application/json",
+                            "ngrok-skip-browser-warning": "true",
                         },
                     });
 
@@ -179,7 +183,8 @@ export default function Profile() {
                     headers: {
                         "Authorization": basicAuth,
                         "Content-Type": "application/json",
-                        "Accept": "application/json"
+                        "Accept": "application/json",
+                        "ngrok-skip-browser-warning": "true",
                     },
                 });
 
@@ -247,7 +252,8 @@ export default function Profile() {
                 headers: {
                     "Authorization": basicAuth,
                     "Content-Type": "application/json",
-                    "Accept": "application/json"
+                    "Accept": "application/json",
+                    "ngrok-skip-browser-warning": "true",
                 },
             });
 
@@ -279,7 +285,8 @@ export default function Profile() {
                 headers: {
                     "Authorization": basicAuth,
                     "Content-Type": "application/json",
-                    "Accept": "application/json"
+                    "Accept": "application/json",
+                    "ngrok-skip-browser-warning": "true"
                 },
                 body: JSON.stringify({
                     "checkout_id": checkoutId
@@ -315,7 +322,8 @@ export default function Profile() {
                 headers: {
                     "Authorization": basicAuth,
                     "Content-Type": "application/json",
-                    "Accept": "application/json"
+                    "Accept": "application/json",
+                    "ngrok-skip-browser-warning": "true"
                 }
             });
 

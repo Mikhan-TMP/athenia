@@ -194,7 +194,8 @@ export default function ChatWindow({
                     headers: {
                         "Content-Type": "application/json",
                         "Accept": "application/json",
-                        "Authorization": basicAuth
+                        "Authorization": basicAuth,
+                        "ngrok-skip-browser-warning": "true", // Uncomment if using ngrok
                     },
                     body: JSON.stringify({
                         ...payload,
@@ -348,7 +349,8 @@ export default function ChatWindow({
                 headers: {
                     "Content-Type": "application/json",
                     "Authorization": basicAuth,
-                    'Accept': 'application/json'
+                    'Accept': 'application/json',
+                    "ngrok-skip-browser-warning": "true",
                 }
             });
             if (!res.ok) throw new Error(`Error ${res.status}`);
@@ -428,6 +430,7 @@ export default function ChatWindow({
     useEffect(() => {
         const fetchLibraries = async () => {
             try {
+
                 const url = `${kohaAPI}/api/v1/libraries`;
                 const basicAuth = `Basic ${btoa(unescape(encodeURIComponent(`${kohaUsername}:${kohaPassword}`)))}`;
                 const res = await fetch(url, {
@@ -435,14 +438,12 @@ export default function ChatWindow({
                     headers: {
                         "Content-Type": "application/json",
                         "Authorization": basicAuth,
-                        'Accept': 'application/json'
+                        'Accept': 'application/json',
+                        "ngrok-skip-browser-warning": "true",
                     }
                 });
                 if (!res.ok) throw new Error(`Error ${res.status}`);
-                const raw = await res.text();
-                console.log("Raw response:", raw);
-                const data = JSON.parse(raw);
-                setLibraries(data);
+                const data = await res.json();
                 console.log(data);
                 setLibraries(data);
             } catch (err) {
@@ -466,7 +467,8 @@ export default function ChatWindow({
                         headers: {
                             "Content-Type": "application/json",
                             "Authorization": basicAuth,
-                            "Accept": "application/json"
+                            "Accept": "application/json",
+                            "ngrok-skip-browser-warning": "true",
                         }
                     });
 
