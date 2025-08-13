@@ -428,6 +428,8 @@ export default function ChatWindow({
     useEffect(() => {
         const fetchLibraries = async () => {
             try {
+                console.log(kohaAPI, kohaUsername, kohaPassword);
+
                 const url = `${kohaAPI}/api/v1/libraries`;
                 const basicAuth = `Basic ${btoa(unescape(encodeURIComponent(`${kohaUsername}:${kohaPassword}`)))}`;
                 const res = await fetch(url, {
@@ -440,6 +442,7 @@ export default function ChatWindow({
                 });
                 if (!res.ok) throw new Error(`Error ${res.status}`);
                 const data = await res.json();
+                console.log(data);
                 setLibraries(data);
             } catch (err) {
                 console.error("Failed to fetch libraries", err);
