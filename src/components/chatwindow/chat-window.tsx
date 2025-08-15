@@ -511,7 +511,22 @@ export default function ChatWindow({
     //     const interval = setInterval(checkBackend, 10000); 
     //     return () => clearInterval(interval);
     // }, []);
-    
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            const dropdown = document.getElementById('profile-dropdown');
+            if (
+                dropdownOpen &&
+                dropdown &&
+                !dropdown.contains(event.target as Node)
+            ) {
+                setDropdownOpen(false);
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [dropdownOpen]);
     return (
         <div className="flex shrink-0 items-center flex-col h-screen w-full">
             {/* Header */}
@@ -552,6 +567,7 @@ export default function ChatWindow({
                         />
                     </div>
                     <motion.div
+                        id="profile-dropdown"
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95 }}
@@ -560,43 +576,43 @@ export default function ChatWindow({
                             dropdownOpen ? '' : 'hidden'
                         }`}
                     >
-                    {/* Header */}
-                    <div className="px-5 py-4 border-b border-white/10">
-                        <div className="flex items-center gap-3">
-                        <BadgeCheckIcon className="w-5 h-5 text-green-400" />
-                        <div className="text-sm">
-                            <p className="text-gray-300">Signed in as</p>
-                            <p className="font-semibold text-white">{isGuest ? 'Guest' : userName || "N/A"}</p>
+                        {/* Header */}
+                        <div className="px-5 py-4 border-b border-white/10">
+                            <div className="flex items-center gap-3">
+                                <BadgeCheckIcon className="w-5 h-5 text-green-400" />
+                                <div className="text-sm">
+                                    <p className="text-gray-300">Signed in as</p>
+                                    <p className="font-semibold text-white">{isGuest ? 'Guest' : userName || "N/A"}</p>
+                                </div>
+                            </div>
                         </div>
+
+                        {/* Menu Items */}
+                        <div className="py-2 space-y-1">
+                            <a
+                                className="flex items-center gap-3 px-5 py-2 text-sm hover:bg-white/10 transition-colors cursor-pointer"
+                                onClick={() => {handleProfile(); setDropdownOpen(false);}}
+                            >
+                            <User2Icon className="w-4 h-4 text-white/80" />
+                            <span className="text-white r" >My Profile</span>
+                            </a>
+
+                            <a
+                            href="#"
+                            className="flex items-center gap-3 px-5 py-2 text-sm hover:bg-white/10 transition-colors"
+                            >
+                            <SettingsIcon className="w-4 h-4 text-white/80" />
+                            <span className="text-white">Settings</span>
+                            </a>
+
+                            <a
+                                onClick={() => {handleLogOut(); }}
+                                className="flex items-center gap-3 px-5 py-2 text-sm hover:bg-red-500/10 transition-colors cursor-pointer"
+                            >
+                            <LogOutIcon className="w-4 h-4 text-red-400" />
+                            <span className="text-red-300">Logout</span>
+                            </a>
                         </div>
-                    </div>
-
-                    {/* Menu Items */}
-                    <div className="py-2 space-y-1">
-                        <a
-                            className="flex items-center gap-3 px-5 py-2 text-sm hover:bg-white/10 transition-colors cursor-pointer"
-                            onClick={() => {handleProfile(); setDropdownOpen(false);}}
-                        >
-                        <User2Icon className="w-4 h-4 text-white/80" />
-                        <span className="text-white r" >My Profile</span>
-                        </a>
-
-                        <a
-                        href="#"
-                        className="flex items-center gap-3 px-5 py-2 text-sm hover:bg-white/10 transition-colors"
-                        >
-                        <SettingsIcon className="w-4 h-4 text-white/80" />
-                        <span className="text-white">Settings</span>
-                        </a>
-
-                        <a
-                            onClick={() => {handleLogOut(); }}
-                            className="flex items-center gap-3 px-5 py-2 text-sm hover:bg-red-500/10 transition-colors cursor-pointer"
-                        >
-                        <LogOutIcon className="w-4 h-4 text-red-400" />
-                        <span className="text-red-300">Logout</span>
-                        </a>
-                    </div>
                     </motion.div>
 
 
@@ -1394,3 +1410,5 @@ export default function ChatWindow({
         </div>
     );
 }
+
+

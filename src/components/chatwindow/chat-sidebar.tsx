@@ -1,13 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MessageSquarePlus, Settings, Search, MoreHorizontal, Trash2, PanelLeftIcon, Globe2, MegaphoneIcon, Calendar1,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
+import axios from "axios"; // Add this import
 
 export default function ChatSidebar({ onSidebarToggle, sidebarOpen }: { onSidebarToggle: () => void, sidebarOpen: boolean }) {
     const [searchQuery, setSearchQuery] = useState("")
     const [selectedChat, setSelectedChat] = useState<number | null>(1)
+    const [isGuest, setIsGuest] = useState<boolean>(false);
+    const [patronId, setPatronId] = useState<string | null>(null);
+    const [cardNumber, setCardNumber] = useState<string | null>(null);
+    const [userName, setUserName] = useState<string | null>(null);
+    const [chatHistories, setChatHistories] = useState<any[]>([]);
+
+    // BACKEND URL
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+
+    useEffect(() => {
+        const storedPatronId = localStorage.getItem('patron_id');
+        const storedCardNumber = localStorage.getItem('cardNumber');
+        const storedUsername = localStorage.getItem('username');
+        const guestValue = localStorage.getItem("isGuest") === "true";
+        setIsGuest(guestValue);
+        setPatronId(storedPatronId);
+        setCardNumber(storedCardNumber);
+        setUserName(storedUsername);
+
+        // Fetch chat history if card number exists
+        if (storedCardNumber) {
+            axios.get(`${backendUrl}/api/chat/get-chat-history?cardnumber=${storedCardNumber}`)
+                .then(res => setChatHistories(res.data as any[]))
+                .catch(err => console.error("Failed to fetch chat history:", err));
+        }
+    }, []);
+
+        
     // const [sidebarOpen, setSidebarOpen] = useState(true);
     return (
         <div className="w-80 h-screen bg-[rgba(26,30,44,1)] flex flex-col z-99 absolute md:relative ">
@@ -43,31 +72,42 @@ export default function ChatSidebar({ onSidebarToggle, sidebarOpen }: { onSideba
                     </div>
                 </div>
                 {/* RECENT CHATS */}
-                <div className="   bg-[rgba(13, 17, 31, 1)] flex min-h-100 md:min-h-100 lg:min-h-100 border mt-2 flex-col gap-2 overflow-auto overflow-y-auto max-h-[400px]">
+                <div className="bg-[rgba(13, 17, 31, 1)] flex min-h-100 md:min-h-100 lg:min-h-100 border mt-2 flex-col gap-2 overflow-auto overflow-y-auto max-h-[400px]">
                     <label className="text-sidebar-foreground/70 ring-sidebar-ring flex shrink-0 items-center rounded-md px-2 text-xs font-medium outline-hidden text-[#bdb4b4f7]">
-                    Recent Chats
+                        Recent Chats
                     </label>
                     <div className="group/menu-item relative p-4 flex flex-col gap-2 ">
-                        <div onClick={() => setSelectedChat(1)}
-                        className={`w-full cursor-pointer rounded-xl justify-start flex-col flex p-3 h-auto hover:bg-slate-800/60 transition-all duration-200 bg-[rgba(24,27,41,1)] select-none ${
-                            selectedChat === 1
-                            ? "bg-gradient-to-r from-orange-500/20 via-orange-600/15 to-transparent border-l-2 border-orange-500 shadow-lg"
-                            : "hover:bg-slate-800/40"
-                        }`}
-                        >
-                            <div className="flex items-center justify-between ">
-                                <div className="flex text-left flex-col">
-                                    <span className="text-[#e5e5e5] text-left ">Library Hours</span>
-                                    <span className="text-[#bdb4b4f7] text-[10px] text-left ">2 minutes ago</span>
+                        {chatHistories.length === 0 ? (
+                            <span className="text-white/40 text-xs">No chat history found.</span>
+                        ) : (
+                            chatHistories.map((chat, idx) => (
+                                <div
+                                    key={chat.sessionId}
+                                    onClick={() => setSelectedChat(idx)}
+                                    className={`w-full cursor-pointer rounded-xl justify-start flex-col flex p-3 h-auto hover:bg-slate-800/60 transition-all duration-200 bg-[rgba(24,27,41,1)] select-none ${
+                                        selectedChat === idx
+                                            ? "bg-gradient-to-r from-orange-500/20 via-orange-600/15 to-transparent border-l-2 border-orange-500 shadow-lg"
+                                            : "hover:bg-slate-800/40"
+                                    }`}
+                                >
+                                    <div className="flex items-center justify-between ">
+                                        <div className="flex text-left flex-col">
+                                            <span className="text-[#e5e5e5] text-left ">
+                                                {chat.text || "Chat Session"}
+                                            </span>
+                                            <span className="text-[#bdb4b4f7] text-[10px] text-left ">
+                                                {chat.startTime ? new Date(chat.startTime).toLocaleString() : ""}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <button className=" h-8 w-8 opacity-50 cursor-pointer hover:opacity-100 text-white/60 hover:text-white flex items-center justify-center">
+                                                <MoreHorizontal className="h-6 w-6 text-white/60" />
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <button className=" h-8 w-8 opacity-50 cursor-pointer hover:opacity-100 text-white/60 hover:text-white flex items-center justify-center">
-                                        <MoreHorizontal className="h-6 w-6 text-white/60" />
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
+                            ))
+                        )}
                     </div>
                 </div>
             </div>
