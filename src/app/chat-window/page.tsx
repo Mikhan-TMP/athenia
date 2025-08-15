@@ -9,7 +9,15 @@ export default function ChatWindowPage( ) {
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [isMobile, setIsMobile] = useState(false);
     const [isGuest, setIsGuest] = useState(false);
+    const [selectedMessages, setSelectedMessages] = useState<any[]>([]);
+    const [sessionId, setSessionId] = useState<number | null>(null);
 
+    const handleNewChat = () => {
+        const newSessionId = Date.now();
+        setSessionId(newSessionId);
+        setSelectedMessages([]);
+        console.log("New chat started, session ID:", newSessionId);
+    };
 
     // Detect screen size for overlay logic
     useEffect(() => {
@@ -41,15 +49,21 @@ export default function ChatWindowPage( ) {
                     <ChatSidebar
                         onSidebarToggle={() => setSidebarOpen((open) => !open)}
                         sidebarOpen={sidebarOpen}
+                        onSelectChat={(messages, sessionId) => {
+                            setSelectedMessages(messages);
+                            setSessionId(sessionId);
+                        }}
+                        onNewChat={handleNewChat}
                     />
                 )}
             </div>
             <div className="flex-1 h-screen w-full min-h-screen relative overflow-hidden ">
                 <AnimatedBackground  />
                 <ChatWindow
-                    // isGuest={isGuest}
                     onSidebarToggle={() => setSidebarOpen((open) => !open)}
                     sidebarOpen={sidebarOpen}
+                    externalMessages={selectedMessages}
+                    sessionId={sessionId} 
                 />
             </div>
         </div>

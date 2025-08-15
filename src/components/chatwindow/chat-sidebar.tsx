@@ -1,12 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MessageSquarePlus, Settings, Search, MoreHorizontal, Trash2, PanelLeftIcon, Globe2, MegaphoneIcon, Calendar1,
+import { MessageSquarePlus, Settings, Search, MoreHorizontal, Trash2, PanelLeftIcon, Globe2, MegaphoneIcon, Calendar1, Edit2Icon, Edit, Save, Cross, X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import axios from "axios"; // Add this import
+import { ToastContainer, toast } from 'react-toastify';
 
-export default function ChatSidebar({ onSidebarToggle, sidebarOpen }: { onSidebarToggle: () => void, sidebarOpen: boolean }) {
+export default function ChatSidebar({
+    onSidebarToggle,
+    sidebarOpen,
+    onSelectChat,
+    onNewChat,
+}: {
+    onSidebarToggle: () => void,
+    sidebarOpen: boolean,
+    onSelectChat: (messages: any[], sessionId: number | null, chatName: string | null) => void,
+    onNewChat: () => void,
+}) {
     const [searchQuery, setSearchQuery] = useState("")
     const [selectedChat, setSelectedChat] = useState<number | null>(1)
     const [isGuest, setIsGuest] = useState<boolean>(false);
@@ -14,6 +25,8 @@ export default function ChatSidebar({ onSidebarToggle, sidebarOpen }: { onSideba
     const [cardNumber, setCardNumber] = useState<string | null>(null);
     const [userName, setUserName] = useState<string | null>(null);
     const [chatHistories, setChatHistories] = useState<any[]>([]);
+    const [editIdx, setEditIdx] = useState<number | null>(null);
+    const [editChatName, setEditChatName] = useState<string>("");
 
     // BACKEND URL
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
@@ -30,13 +43,87 @@ export default function ChatSidebar({ onSidebarToggle, sidebarOpen }: { onSideba
 
         // Fetch chat history if card number exists
         if (storedCardNumber) {
-            axios.get(`${backendUrl}/api/chat/get-chat-history?cardnumber=${storedCardNumber}`)
-                .then(res => setChatHistories(res.data as any[]))
-                .catch(err => console.error("Failed to fetch chat history:", err));
+            const fetchChatHistory = async () => {
+                try {
+                    const response = await axios.get(`${backendUrl}/api/chat/get-chat-history?cardnumber=${storedCardNumber}`);
+                    setChatHistories(response.data as any[]);
+                    console.log("Chat history fetched:", response.data);
+                } catch (error) {
+                    console.error("Failed to fetch chat history:", error);
+                }
+            };
+            fetchChatHistory();
         }
     }, []);
 
-        
+    const handleEditClick = (idx: number, currentName: string) => {
+        setEditIdx(idx);
+        setEditChatName(currentName || "");
+    };
+
+    const handleEditSave = async (chat: any, idx: number) => {
+        try {
+            const params = new URLSearchParams();
+            params.append("newName", editChatName);
+            await axios.put(
+                `${backendUrl}/api/chat/update-chat-name/${chat.cardNumber || cardNumber}/${chat.sessionId}`,
+                params,
+                {
+                    headers: {
+                        "Content-Type": "application/x-www-form-urlencoded",
+                    },
+                }
+            );
+            setChatHistories(prev =>
+                prev.map((c, i) =>
+                    i === idx
+                        ? { ...c, chatName: editChatName, name: editChatName }
+                        : c
+                )
+            );
+            handleToast("Chat name updated successfully", "success");
+            setEditIdx(null);
+        } catch (error) {
+            console.error("Failed to update chat name:", error);
+            handleToast("Failed to update chat name", "error");
+        }
+    }
+    
+
+    const handleToast = (message: string, type: "success" | "error" | "warning") => {
+        if (type === "success") {
+            toast.success(message, {
+                position: "top-center",
+                autoClose: 2000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                progress: undefined,
+            });
+        } else if (type === "error") {
+            toast.error(message, {
+                position: "top-center",
+                autoClose: 2000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                progress: undefined,
+            });
+        }
+        else if (type === "warning") {
+            toast.warning(message, {
+                position: "top-center",
+                autoClose: 5000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                progress: undefined,
+            });
+        }
+    }
     // const [sidebarOpen, setSidebarOpen] = useState(true);
     return (
         <div className="w-80 h-screen bg-[rgba(26,30,44,1)] flex flex-col z-99 absolute md:relative ">
@@ -52,9 +139,15 @@ export default function ChatSidebar({ onSidebarToggle, sidebarOpen }: { onSideba
                 </div>
                 {/* NEW CHAT */}
                 <div className="p-4 bg-[rgba(26,30,44,1)]">
-                    <button className="cursor-pointer rounded-lg flex justify-center items-center w-full h-12 w-full gap-2 bg-gradient-to-r from-orange-500 via-orange-600 to-orange-500 hover:from-orange-600 hover:via-orange-700 hover:to-orange-600 text-white border-none shadow-lg hover:shadow-orange-500/25 transition-all duration-300">
-                    <MessageSquarePlus className="h-4 w-4" />
-                    New Chat
+                    <button
+                        className="cursor-pointer rounded-lg flex justify-center items-center w-full h-12 w-full gap-2 bg-gradient-to-r from-orange-500 via-orange-600 to-orange-500 hover:from-orange-600 hover:via-orange-700 hover:to-orange-600 text-white border-none shadow-lg hover:shadow-orange-500/25 transition-all duration-300"
+                        onClick={() => {
+                            setSelectedChat(null);
+                            onNewChat();
+                        }}
+                    >
+                        <MessageSquarePlus className="h-4 w-4" />
+                        New Chat
                     </button>
                 </div>
                 {/* SEARCH */}
@@ -72,7 +165,7 @@ export default function ChatSidebar({ onSidebarToggle, sidebarOpen }: { onSideba
                     </div>
                 </div>
                 {/* RECENT CHATS */}
-                <div className="bg-[rgba(13, 17, 31, 1)] flex min-h-100 md:min-h-100 lg:min-h-100 border mt-2 flex-col gap-2 overflow-auto overflow-y-auto max-h-[400px]">
+                <div className="bg-[rgba(13, 17, 31, 1)] flex min-h-100 md:min-h-100 lg:min-h-100  mt-2 flex-col gap-2 overflow-auto overflow-y-auto max-h-[400px]">
                     <label className="text-sidebar-foreground/70 ring-sidebar-ring flex shrink-0 items-center rounded-md px-2 text-xs font-medium outline-hidden text-[#bdb4b4f7]">
                         Recent Chats
                     </label>
@@ -83,27 +176,103 @@ export default function ChatSidebar({ onSidebarToggle, sidebarOpen }: { onSideba
                             chatHistories.map((chat, idx) => (
                                 <div
                                     key={chat.sessionId}
-                                    onClick={() => setSelectedChat(idx)}
+                                    onClick={() => {
+                                        setSelectedChat(idx);
+                                        onSelectChat(chat.messages, chat.sessionId, chat.chatName);
+                                    }}
                                     className={`w-full cursor-pointer rounded-xl justify-start flex-col flex p-3 h-auto hover:bg-slate-800/60 transition-all duration-200 bg-[rgba(24,27,41,1)] select-none ${
                                         selectedChat === idx
                                             ? "bg-gradient-to-r from-orange-500/20 via-orange-600/15 to-transparent border-l-2 border-orange-500 shadow-lg"
-                                            : "hover:bg-slate-800/40"
+                                            : "bg-gradient-to-r from-blue-700/20 via-blue-900/15 to-transparent border-l-2 border-blue-900/50 "
                                     }`}
                                 >
-                                    <div className="flex items-center justify-between ">
-                                        <div className="flex text-left flex-col">
-                                            <span className="text-[#e5e5e5] text-left ">
-                                                {chat.text || "Chat Session"}
-                                            </span>
-                                            <span className="text-[#bdb4b4f7] text-[10px] text-left ">
-                                                {chat.startTime ? new Date(chat.startTime).toLocaleString() : ""}
-                                            </span>
+                                    <div className="flex items-center justify-between  ">
+                                        <div className="flex text-left flex-col w-full ">
+                                            {editIdx === idx ? (
+                                                <form
+                                                    onSubmit={e => {
+                                                        e.preventDefault();
+                                                        handleEditSave(chat, idx);
+                                                    }}
+                                                    className="flex items-center gap-2"
+                                                >
+                                                    <input
+                                                        type="text"
+                                                        value={editChatName}
+                                                        onChange={e => setEditChatName(e.target.value)}
+                                                        className="text-[#e5e5e5] bg-slate-700 rounded px-2 py-1 text-sm"
+                                                        autoFocus
+                                                    />
+                                                    <button type="submit" className="  cursor-pointer text-green-500 hover:text-green-700">
+                                                        <Save />
+                                                    </button>
+                                                    <button type="button" className=" rounded-2xl bg-gray-600 cursor-pointer text-white/50 hover:text-red-300" onClick={() => setEditIdx(null)}>
+                                                        <X />
+                                                    </button>
+                                                </form>
+                                            ) : (
+                                                    <div className="flex flex-row items-center justify-between w-full  ">
+                                                        <div className="flex flex-col ">
+                                                            <span className="text-[#e5e5e5] text-left ">
+                                                                {chat.name || "Chat Session"}
+                                                            </span>
+                                                            <span className="text-[#bdb4b4f7] text-[10px] text-left ">
+                                                                {chat.startTime ? new Date(chat.startTime).toLocaleString() : ""}
+                                                            </span>
+                                                            <span className="text-[#bdb4b4f7] text-[10px] text-left ">
+                                                                {chat.sessionId ? `Session: ${chat.sessionId}` : ""} (Debug Mode)
+                                                            </span>
+                                                        </div>
+                                                        <div>
+                                                            {selectedChat === idx ? (
+                                                                <div className="flex gap">
+                                                                    <button className="h-8 w-8 opacity-80 cursor-pointer hover:opacity-100 text-red-400 hover:text-red-600 flex items-center justify-center" title="Delete">
+                                                                        <Trash2 className="h-5 w-5" />
+                                                                    </button>
+                                                                    <button
+                                                                        className="h-8 w-8 opacity-80 cursor-pointer hover:opacity-100 text-blue-400 hover:text-blue-600 flex items-center justify-center"
+                                                                        title="Edit"
+                                                                        onClick={e => {
+                                                                            e.stopPropagation();
+                                                                            handleEditClick(idx, chat.chatName);
+                                                                        }}
+                                                                    >
+                                                                        <Edit className="h-5 w-5" />
+                                                                    </button>
+                                                                </div>
+                                                            ) : (
+                                                                <button className="h-8 w-8 opacity-50 cursor-pointer hover:opacity-100 text-white/60 hover:text-white flex items-center justify-center">
+                                                                    <MoreHorizontal className="h-6 w-6 text-white/60" />
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                            )
+                                            }
                                         </div>
-                                        <div>
-                                            <button className=" h-8 w-8 opacity-50 cursor-pointer hover:opacity-100 text-white/60 hover:text-white flex items-center justify-center">
-                                                <MoreHorizontal className="h-6 w-6 text-white/60" />
-                                            </button>
-                                        </div>
+                                        {/* <div>
+                                            {selectedChat === idx ? (
+                                                <div className="flex gap">
+                                                    <button className="h-8 w-8 opacity-80 cursor-pointer hover:opacity-100 text-red-400 hover:text-red-600 flex items-center justify-center" title="Delete">
+                                                        <Trash2 className="h-5 w-5" />
+                                                    </button>
+                                                    <button
+                                                        className="h-8 w-8 opacity-80 cursor-pointer hover:opacity-100 text-blue-400 hover:text-blue-600 flex items-center justify-center"
+                                                        title="Edit"
+                                                        onClick={e => {
+                                                            e.stopPropagation();
+                                                            handleEditClick(idx, chat.chatName);
+                                                        }}
+                                                    >
+                                                        <Edit className="h-5 w-5" />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <button className="h-8 w-8 opacity-50 cursor-pointer hover:opacity-100 text-white/60 hover:text-white flex items-center justify-center">
+                                                    <MoreHorizontal className="h-6 w-6 text-white/60" />
+                                                </button>
+                                            )}
+                                        </div> */}
                                     </div>
                                 </div>
                             ))
@@ -135,6 +304,7 @@ export default function ChatSidebar({ onSidebarToggle, sidebarOpen }: { onSideba
                     <span className="text-xs text-center text-white/60">© 2025 Ntek Systems Inc</span>
                 </div>
             </div>
+            <ToastContainer />
         </div>
     );
 }

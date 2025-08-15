@@ -5,7 +5,6 @@ import { SettingsIcon, LogOutIcon, BadgeCheckIcon, PanelLeftIcon, SendIcon, User
 import { AnimatePresence, motion } from "framer-motion";
 import { ToastContainer, toast } from 'react-toastify';
 import { useRouter } from 'next/navigation';
-// Import image
 import Image from "next/image";
 
 
@@ -19,30 +18,21 @@ const books = [
         available: 3,
     }
 ];
-// type isGuestProps = {
-//   isGuest: (value: boolean) => void;
-// };
 
 type ChatWindowProps = {
     onSidebarToggle: () => void;
     sidebarOpen: boolean;
-    // isGuest: boolean;
+    externalMessages?: any[];
+    sessionId: number | null;
 };
 
 
 
-export default function ChatWindow({
-        onSidebarToggle,
-        sidebarOpen,
-        // isGuest,
-    }: ChatWindowProps) {
-
-    // Health Check
-    const [backendOnline, setBackendOnline] = useState<boolean>(true);
-
+export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessages = [], sessionId,}: ChatWindowProps) {
+    // Pagination
     const [currentPage, setCurrentPage] = useState(1);
     const booksPerPage = 1;
-
+    // Messages
     const [message, setMessage] = useState("");
     const [loading, setLoading] = useState(false);
     // API
@@ -73,24 +63,19 @@ export default function ChatWindow({
     // RECEIPT
     const [receiptModalOpen, setReceiptModalOpen] = useState(false);
     const [receiptData, setReceiptData] = useState<any>(null);
-
+    // History
     const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const [booksPages, setBooksPages] = useState<{ [idx: number]: number }>({}); 
-
     //Profile
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [profileModalOpen, setProfileModalOpen] = useState(false);
-    
     // Logout
     const [logoutModalOpen, setLogoutModalOpen] = useState(false);
-
-
     //Local State
     const [patronId, setPatronId] = useState<string | null>(null);
     const [cardNumber, setCardNumber] = useState<string | null>(null);
     const [userName, setUserName] = useState<string | null>(null);
-
     // Show all modal
     const [showAllModalOpen, setShowAllModalOpen] = useState(false);
     const [showAllBooks, setShowAllBooks] = useState<Array<{
@@ -102,38 +87,21 @@ export default function ChatWindow({
         quantity_available: number;
         biblio_id: number;
     }> | null>(null);
-
-
     //Loading
     const [loadingOpen, setIsLoadingOpen] = useState(false);
-
     //Router
     const router = useRouter();
-
     // Item
     type Item = {
         item_id: number;
         [key: string]: any;
     };
-
     //guest
     const [isGuest, setIsGuest] = useState<boolean>(false);
+    //initial session (on load)
+    const [newSessionId, setNewSessionId] = useState<number | null>(null);
 
-
-
-    // Load the Local Storage Variables.
-    useEffect(() => {
-        const storedPatronId = localStorage.getItem('patron_id');
-        const storedCardNumber = localStorage.getItem('cardNumber');
-        const storedUsername = localStorage.getItem('username');
-        const guestValue = localStorage.getItem("isGuest") === "true";
-        setIsGuest(guestValue);
-        setPatronId(storedPatronId);
-        setCardNumber(storedCardNumber);
-        setUserName(storedUsername);
-
-    }, []);
-
+    
 
     type ChatMessage = | { type: "ai"; message: string } | { type: "user"; message: string } | { type: "booksearch" | "recommendation" | "lookup" | "specific_book_search"; 
             message: string;
@@ -172,7 +140,7 @@ export default function ChatWindow({
             handleToast("Please log in to reserve a book.", "error");
             return
         }
-        console.log(holdDate); 
+        // console.log(holdDate); 
 
         for (const item of selectedItem) {
             try {
@@ -188,7 +156,7 @@ export default function ChatWindow({
                     // hold_date: holdDate || new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
                 };
 
-                console.log(payload);
+                // console.log(payload);
                 const response = await fetch(url, {
                     method: "POST",
                     headers: {
@@ -263,14 +231,10 @@ export default function ChatWindow({
     };
     const handleSend = async () => {
         if (loading || !message.trim()) return;
-        if (!backendOnline) {
-            handleToast("The AI Chatbot is offline. Please try again later.", "error");
-            return;
-        }
         setChatHistory((prev) => [...prev, { type: "user", message }]);
         setLoading(true);
         setMessage("");
-        console.log("cardNumber", cardNumber);
+        // console.log("cardNumber", cardNumber);
 
 
         try {
@@ -282,18 +246,16 @@ export default function ChatWindow({
             },
             body: JSON.stringify({ 
                 query: message,
-                sessionId: Date.now() / 1000 | 0,
+                sessionId: actualSessionId || (Date.now() / 1000 | 0), 
                 cardNumber: cardNumber
             })
             });
             const data = await res.json();
             const responseType = data?.response?.[0]?.type;
 
-            // Handle response types
-            console.log(data);
+            // console.log(data);
 
             if (!data.response || data.response.length === 0) {
-                // GENERAL CHAT
                 setChatHistory((prev) => [
                     ...prev,
                     { 
@@ -355,7 +317,7 @@ export default function ChatWindow({
             });
             if (!res.ok) throw new Error(`Error ${res.status}`);
             const data = await res.json();
-            console.log("Book details response:", data);
+            // console.log("Book details response:", data);
 
             if (!data) {
                 setModalError("No details found for this book.");
@@ -444,7 +406,7 @@ export default function ChatWindow({
                 });
                 if (!res.ok) throw new Error(`Error ${res.status}`);
                 const data = await res.json();
-                console.log(data);
+                // console.log(data);
                 setLibraries(data);
             } catch (err) {
                 console.error("Failed to fetch libraries", err);
@@ -475,7 +437,7 @@ export default function ChatWindow({
                     if (!res.ok) throw new Error(`Error ${res.status}`);
                     
                     const data = await res.json();
-                    console.log("items_fetched", data);
+                    // console.log("items_fetched", data);
                     setItems(data);
                     const available = data.filter((item: Item) => item.checked_out_date === null);
                     setAvailableCount(available.length);
@@ -492,25 +454,7 @@ export default function ChatWindow({
         };
         fetchItems();
     }, [reserveModalOpen, reserveData?.biblio_id]);
-    // // Backend Health Check
-    // useEffect(() => {
-    //     const checkBackend = async () => {
-    //         try {
-    //             const res = await fetch(`${backendUrl}/health`, {
-    //                 method: 'GET',
-    //                 headers: { 'Accept': 'application/json' }
-    //             });
-    //             const data = await res.json();
-    //             setBackendOnline(data.status === "healthy");
-    //         } catch {
-    //             handleToast("Athenia is offline. Please refresh the page.", "error");
-    //             setBackendOnline(false);
-    //         }
-    //     };
-    //     checkBackend();
-    //     const interval = setInterval(checkBackend, 10000); 
-    //     return () => clearInterval(interval);
-    // }, []);
+    // If the dropdown is open, close it when clicking outside
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
             const dropdown = document.getElementById('profile-dropdown');
@@ -527,6 +471,41 @@ export default function ChatWindow({
             document.removeEventListener('mousedown', handleClickOutside);
         };
     }, [dropdownOpen]);
+    // Chat History Fetching
+    useEffect(() => {
+        if (externalMessages.length > 0) {
+            setChatHistory(
+                externalMessages.map(msg => ({
+                    type: msg.sender === "user" ? "user" : "ai",
+                    message: msg.text,
+                }))
+            );
+        } else {
+            setChatHistory([]);
+        }
+    }, [externalMessages]);
+
+    // Load the Local Storage Variables.
+    useEffect(() => {
+        const storedPatronId = localStorage.getItem('patron_id');
+        const storedCardNumber = localStorage.getItem('cardNumber');
+        const storedUsername = localStorage.getItem('username');
+        const guestValue = localStorage.getItem("isGuest") === "true";
+        setIsGuest(guestValue);
+        setPatronId(storedPatronId);
+        setCardNumber(storedCardNumber);
+        setUserName(storedUsername);
+
+    }, []);
+
+    useEffect(() => {
+        if (!sessionId && !newSessionId){
+            setNewSessionId(Date.now());
+        }
+    }, [sessionId, newSessionId]);
+
+    const actualSessionId = sessionId ?? newSessionId ?? 0;
+
     return (
         <div className="flex shrink-0 items-center flex-col h-screen w-full">
             {/* Header */}
@@ -536,6 +515,7 @@ export default function ChatWindow({
                         style={{ color: "white", cursor: "pointer" }}
                         onClick={onSidebarToggle}
                     />
+                    <p className="text-sm text-white">Session: {actualSessionId} <span className="text-orange-500 text-[10px]">(Debug Mode)</span></p>
                     {/* <div className="border-l border-white/50 h-5 mx-2" />
                         <img
                         src="/Athenia2.png"
@@ -667,7 +647,6 @@ export default function ChatWindow({
                                     width={40}
                                     height={40}
                                     className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30"
-                                    onClick={() => setDropdownOpen(!dropdownOpen)}
                                 />
                             </div>
                         </div>
@@ -1105,65 +1084,6 @@ export default function ChatWindow({
                         </div>
                     </div>
                 </div>
-            // <div className="fixed inset-0 z-50 p-5 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-            //     <div className="relative w-full max-w-lg bg-gradient-to-br from-slate-800 via-purple-900/90 to-slate-700 text-white rounded-2xl shadow-2xl ring-1 ring-purple-400/30 border border-purple-300/20 p-6 sm:p-8">
-            //     {/* Close Button */}
-            //     <button onClick={() => setReserveModalOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-purple-400 transition-colors cursor-pointer" aria-label="Close">
-            //         <CircleX size={24} />
-            //     </button>
-            //     {/* Header */}
-            //     <h2 className="text-3xl font-semibold text-purple-300 mb-6">Reserve Book</h2>
-            //     {/* Patron & Biblio Info */}
-            //     <div className="space-y-3 mb-4 text-sm sm:text-base">
-            //         <div className="flex justify-between">
-            //             <span className="text-slate-400">Patron ID:</span>
-            //             <span className="text-slate-100 font-medium">
-            //             {reserveData.patron_id ? reserveData.patron_id : "Please Login first."}
-            //             </span>
-            //         </div>
-            //         <div className="flex justify-between">
-            //             <span className="text-slate-400">Biblio ID:</span>
-            //             <span className="text-slate-100 font-medium">{reserveData.biblio_id}</span>
-            //         </div>
-            //         <div className="flex justify-between">
-            //             <span className="text-slate-400">Available Copies:</span>
-            //             <span className="text-slate-100 font-medium">
-            //             {availableCount === 0 || availableCount === null
-            //                 ? "No available items to reserve."
-            //                 : availableCount}
-            //             </span>
-            //         </div>
-            //     </div>
-            //         {/* Library Selector */}
-            //         <div className="mb-2">
-            //             <label htmlFor="library" className="block text-slate-400 mb-2 text-sm">
-            //             Select Pickup Library:
-            //             </label>
-            //             <select
-            //                 id="library"
-            //                 value={selectedLibrary}
-            //                 onChange={(e) => setSelectedLibrary(e.target.value)}
-            //                 className="w-full bg-slate-900 text-white border border-purple-500 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
-            //             >
-            //                 <option value="">-- Select a Library --</option>
-            //                 {libraries.map((lib) => (
-            //                     <option key={lib.library_id} value={lib.library_id}>
-            //                     {lib.name}
-            //                     </option>
-            //                 ))}
-            //             </select>
-            //         </div>
-            //         {/* Footer Buttons */}
-            //         <div className="flex justify-end gap-3">
-            //             <button
-            //                 onClick={() => {handleReserve(); }}
-            //                 className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-md transition cursor-pointer"
-            //             >
-            //                 Confirm Reserve
-            //             </button>
-            //         </div>
-            //     </div>
-            // </div>
             )}
 
             {/* Reservation receipt */}
