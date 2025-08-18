@@ -100,10 +100,16 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
     const [isGuest, setIsGuest] = useState<boolean>(false);
     //initial session (on load)
     const [newSessionId, setNewSessionId] = useState<number | null>(null);
+    //voice modal.
+    const [voiceModal, setVoiceModal] = useState<boolean>(false);
+    //pagination
+    const totalPages = Math.ceil(books.length / booksPerPage);
+    const currentBooks = books.slice(
+        (currentPage - 1) * booksPerPage,
+        currentPage * booksPerPage
+    );
 
-    
-
-    type ChatMessage = | { type: "ai"; message: string } | { type: "user"; message: string } | { type: "booksearch" | "recommendation" | "lookup" | "specific_book_search"; 
+    type ChatMessage = | { type: "ai"; message: string } | { type: "user"; message: string } | { type: "booksearch" | "recommendation" | "lookup" | "specific_book_search";
             message: string;
             books: Array<{
             title: string;
@@ -293,11 +299,7 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
         }
         setLoading(false);
     };
-    const totalPages = Math.ceil(books.length / booksPerPage);
-    const currentBooks = books.slice(
-        (currentPage - 1) * booksPerPage,
-        currentPage * booksPerPage
-    );
+
     async function handleMoreInfo(biblio_id: number) {
         setModalLoading(true);
         setModalError(null);
@@ -506,56 +508,34 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
 
     const actualSessionId = sessionId ?? newSessionId ?? 0;
 
+
+
     return (
         <div className="flex shrink-0 items-center flex-col h-screen w-full">
             {/* Header */}
             <div className="z-15 flex w-full h-25 items-center justify-between select-none border-b border-white/10 px-4 bg-gradient-to-r from-slate-800/40 via-blue-900/30 to-slate-800/40 backdrop-blur-lg">
                 <div className="flex justify-start items-center gap-2">
-                    <PanelLeftIcon
-                        style={{ color: "white", cursor: "pointer" }}
-                        onClick={onSidebarToggle}
-                    />
-                    <p className="text-sm text-white">Session: {actualSessionId} <span className="text-orange-500 text-[10px]">(Debug Mode)</span></p>
-                    {/* <div className="border-l border-white/50 h-5 mx-2" />
-                        <img
-                        src="/Athenia2.png"
-                        alt="Athenia Profile Image"
-                        className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30"
-                        />
+                    <PanelLeftIcon style={{ color: "white", cursor: "pointer" }} onClick={onSidebarToggle} />
+                    <div className="border-l border-white/50 h-5 mx-2" />
+                        <Image src="/Athenia2.png" alt="Athenia Profile Image" width={40} height={40} className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30" />
                     <div className="flex flex-col justify-start ">
                         <h1 className="text-xl font-bold text-white ">
                             Athenia
                         </h1>
                         <span className="flex items-center gap-1 text-xs">
-                            <span className={`w-2 h-2 rounded-full ${backendOnline ? "bg-green-500" : "bg-red-500"}`}></span>
-                            <span className={`${backendOnline ? "text-green-500" : "text-red-500"}`}>
-                                {backendOnline ? "Online" : "Offline"}
-                            </span>
-
+                            <span className="text-green-500">
+                                Online
+                            </span> 
                         </span>
-                    </div> */}
+                        <p className="text-[8px] text-white">Session: {actualSessionId} <span className="text-orange-500 text-[10px]">(Debug Mode)</span></p>
+                    </div>
+                    
                 </div>
                 <div className="relative">
                     <div className="flex flex-col gap-1 items-center justify-center border-l border-white/50 h-5 mx-2 px-5">
-                        <Image
-                            src={isGuest ? "/Default_User.jpg" : "/default-user.webp"}
-                            alt="User"
-                            width={40}
-                            height={40}
-                            className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30"
-                            onClick={() => setDropdownOpen(!dropdownOpen)}
-                        />
+                        <Image src={isGuest ? "/Default_User.jpg" : "/default-user.webp"} alt="User" width={40} height={40} className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30" onClick={() => setDropdownOpen(!dropdownOpen)} />
                     </div>
-                    <motion.div
-                        id="profile-dropdown"
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        transition={{ duration: 0.2 }}
-                        className={`absolute right-4 top-10 w-64 rounded-xl shadow-lg backdrop-blur-xl bg-[rgba(26,30,44,1)] border border-white/10 text-white ${
-                            dropdownOpen ? '' : 'hidden'
-                        }`}
-                    >
+                    <motion.div id="profile-dropdown" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2 }} className={`absolute right-4 top-10 w-64 rounded-xl shadow-lg backdrop-blur-xl bg-[rgba(26,30,44,1)] border border-white/10 text-white ${ dropdownOpen ? '' : 'hidden' }`} >
                         {/* Header */}
                         <div className="px-5 py-4 border-b border-white/10">
                             <div className="flex items-center gap-3">
@@ -566,59 +546,34 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
                                 </div>
                             </div>
                         </div>
-
                         {/* Menu Items */}
                         <div className="py-2 space-y-1">
-                            <a
-                                className="flex items-center gap-3 px-5 py-2 text-sm hover:bg-white/10 transition-colors cursor-pointer"
-                                onClick={() => {handleProfile(); setDropdownOpen(false);}}
-                            >
-                            <User2Icon className="w-4 h-4 text-white/80" />
-                            <span className="text-white r" >My Profile</span>
+                            <a className="flex items-center gap-3 px-5 py-2 text-sm hover:bg-white/10 transition-colors cursor-pointer" onClick={() => {handleProfile(); setDropdownOpen(false);}} >
+                                <User2Icon className="w-4 h-4 text-white/80" />
+                                <span className="text-white">My Profile</span>
                             </a>
-
-                            <a
-                            href="#"
-                            className="flex items-center gap-3 px-5 py-2 text-sm hover:bg-white/10 transition-colors"
-                            >
-                            <SettingsIcon className="w-4 h-4 text-white/80" />
-                            <span className="text-white">Settings</span>
+                            <a href="#" className="flex items-center gap-3 px-5 py-2 text-sm hover:bg-white/10 transition-colors">
+                                <SettingsIcon className="w-4 h-4 text-white/80" />
+                                <span className="text-white">Settings</span>
                             </a>
-
-                            <a
-                                onClick={() => {handleLogOut(); }}
-                                className="flex items-center gap-3 px-5 py-2 text-sm hover:bg-red-500/10 transition-colors cursor-pointer"
-                            >
-                            <LogOutIcon className="w-4 h-4 text-red-400" />
-                            <span className="text-red-300">Logout</span>
+                            <a onClick={() => {handleLogOut(); }} className="flex items-center gap-3 px-5 py-2 text-sm hover:bg-red-500/10 transition-colors cursor-pointer">
+                                <LogOutIcon className="w-4 h-4 text-red-400" />
+                                <span className="text-red-300">Logout</span>
                             </a>
                         </div>
                     </motion.div>
-
-
                 </div>
             </div>
 
             {/* Chats */}
-            <div
-                ref={chatContainerRef}
-                className="h-screen w-full  py-10 px-2 md:px-15 sm:px-10 lg:px-30 z-10 overflow-y-auto"
-                style={{ maxHeight: "calc(100vh - 140px)" }} 
-            >
+            <div ref={chatContainerRef} className="h-screen w-full  py-10 px-2 md:px-15 sm:px-10 lg:px-30 z-10 overflow-y-auto" style={{ maxHeight: "calc(100vh - 140px)" }}  >
             {chatHistory.length === 0 && !loading && (
                 <div className="flex flex-1 justify-center items-center select-none ">
                     <div className="mx-auto p-8 w-150 rounded-2xl bg-gradient-to-r from-slate-900/50 to-slate-800/50 text-white text-center shadow-lg">
-                        <Image
-                            src="/Athenia2.png"
-                            alt="Athenia Avatar"
-                            width={120}
-                            height={120}
-                            className="mx-auto mb-3 w-30 h-30 rounded-full ring-2 ring-orange-300/50"
-                        />
+                        <Image src="/Athenia2.png" alt="Athenia Avatar" width={120} height={120} className="mx-auto mb-3 w-30 h-30 rounded-full ring-2 ring-orange-300/50" />
                         <h2 className="text-3xl font-bold text-white drop-shadow">Welcome to AI Ask Librarian!</h2>
                         <p className="text-white/90 text-base">
-                            Hi there! I am Athenia, your friendly library assistant.<br />
-                            <span className="text-orange-600 font-semibold">Try these:</span>
+                            Hi there! I am Athenia, your friendly library assistant.<br /> <span className="text-orange-600 font-semibold">Try these:</span>
                         </p>
                         <ul className="text-white/80 text-sm text-center mx-auto ">
                             <li>🔍 <span className="font-medium">Find a book:</span> <span className="italic text-white/90">"Find books by J.K. Rowling"</span></li>
@@ -634,35 +589,20 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
             {chatHistory.map((item, idx) => {
                 if (item.type === "user") {
                 return (
-
                         <div key={idx} className="flex w-full justify-end items-center text-wrap gap-3 p-4">
                             <div className="p-3 max-w-[80%] rounded-lg space-y-4 bg-gradient-to-r from-orange-500 via-orange-600 to-orange-500 text-white shadow-orange-500/20">
                                 <p>{item.message}</p>
                             </div>
-                            
                             <div>
-                                <Image
-                                    src={isGuest ? "/Default_User.jpg" : "/default-user.webp"}
-                                    alt="User"
-                                    width={40}
-                                    height={40}
-                                    className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30"
-                                />
+                                <Image src={isGuest ? "/Default_User.jpg" : "/default-user.webp"} alt="User" width={40} height={40} className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30" />
                             </div>
                         </div>
-
                 );
                 } else if (item.type === "ai") {
                 return (
                     <div key={idx} className="flex w-full justify-start text-wrap gap-3 p-4">
                         <div>
-                            <Image
-                            src="/Athenia2.png"
-                            alt="Avatar"
-                            width={40}
-                            height={40}
-                            className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30"
-                            />
+                            <Image src="/Athenia2.png" alt="Avatar" width={40} height={40} className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30" />
                         </div>
                         <div className="p-3 max-w-[80%] rounded-lg space-y-4 bg-gradient-to-r from-slate-700/80 to-slate-600/80 text-white border border-slate-500/30 backdrop-blur-sm shadow-slate-900/20">
                             <p>{item.message}</p>
@@ -681,47 +621,19 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
                         {/* GENERAL CHAT */}
                         <div className="flex w-full justify-start text-wrap gap-3 p-4">
                             <div>
-                                <Image
-                                src="/Athenia2.png"
-                                alt="Avatar"
-                                width={40}
-                                height={40}
-                                className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30"
-                                />
+                                <Image src="/Athenia2.png" alt="Avatar" width={40} height={40} className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30" />
                             </div>
                             <div className="p-5 max-w-[80%] rounded-lg space-y-4 bg-gradient-to-r from-slate-700/80 to-slate-600/80 text-white border border-slate-500/30 backdrop-blur-sm shadow-slate-900/20">
-                            <p>{item.message}</p>
+                                <p>{item.message}</p>
                             </div>
                         </div>
                         {/* BOOKS LIST */}
-                        {currentBooks.map((book: {
-                            title: string;
-                            author: string;
-                            year: number;
-                            publisher: string;
-                            isbn: string;
-                            quantity_available: number;
-                            biblio_id : number
-                        }, bIdx: number) => (
-
+                        {currentBooks.map((book: { title: string; author: string; year: number; publisher: string; isbn: string; quantity_available: number; biblio_id : number }, bIdx: number) => (
                         <div key={bIdx} className="flex w-full justify-start text-wrap gap-3 p-4">
                             <div>
-                                <Image
-                                src="/Athenia2.png"
-                                alt="Avatar"
-                                width={40}
-                                height={40}
-                                className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30"
-                                />
+                                <Image src="/Athenia2.png" alt="Avatar" width={40} height={40} className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30" />
                             </div>
-
-                            <div className="w-full max-w-[80%] lg:max-w-[80%] sm:max-w-[100%] md:max-w-[80%] h-full p-3 sm:p-5 md:p-6 lg:p-7 space-y-4 
-                                bg-gradient-to-r from-slate-700/80 to-slate-600/80 
-                                text-white 
-                                rounded-xl shadow-md 
-                                border-l-4 border-orange-500/100
-                                backdrop-blur-sm bg-opacity-80 bg-clip-padding
-                                hover:shadow-lg transition-shadow duration-300 ">
+                            <div className="w-full max-w-[80%] lg:max-w-[80%] sm:max-w-[100%] md:max-w-[80%] h-full p-3 sm:p-5 md:p-6 lg:p-7 space-y-4  bg-gradient-to-r from-slate-700/80 to-slate-600/80  text-white  rounded-xl shadow-md  border-l-4 border-orange-500/100 backdrop-blur-sm bg-opacity-80 bg-clip-padding hover:shadow-lg transition-shadow duration-300 ">
                                 <div className="flex gap-2 h-12 justify-between items-center">
                                     <h1 className="text-sm sm:text-lg lg:text-2xl capitalize font-bold w-3/4 line-clamp-2">
                                         {book.title.length > 60 ? `${book.title.substring(0, 57)}...` : book.title}
@@ -757,8 +669,7 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
                                     </div>
                                 </div>
                                 <div className="flex gap-4">
-                                    <button
-                                        className="cursor-pointer flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-md font-medium text-sm"
+                                    <button className="cursor-pointer flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-md font-medium text-sm"
                                         onClick={() => {
                                             setReserveData({
                                                 // patron_id: localStorage.getItem("patron_id") ? Number(localStorage.getItem("patron_id")) : 0,
@@ -767,14 +678,11 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
                                                 biblio_id: book.biblio_id,
                                             });
                                             setReserveModalOpen(true);
-                                        }}
-                                    >
+                                        }} >
                                         📚 Reserve Book
                                     </button>
-                                    <button
-                                        className="cursor-pointer flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-md font-medium text-sm"
-                                        onClick={() => handleMoreInfo(book.biblio_id)}
-                                        >
+                                    <button className="cursor-pointer flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-md font-medium text-sm"
+                                        onClick={() => handleMoreInfo(book.biblio_id)} >
                                     🧾 More Info
                                     </button>
                                 </div>
@@ -782,48 +690,39 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
                                 {/* Pagination Controls */}
                                 <div className="flex flex-wrap gap-2 items-center mt-1   justify-between">
                                     <div>
-                                    {/* <button
-                                        className="cursor-pointer px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-md"
-                                            onClick={() => {
-                                                setShowAllBooks(item.books);
-                                                setShowAllModalOpen(true);
-                                            }}
-                                        >
-                                            Show All
+                                    {/* <button className="cursor-pointer px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-md"
+                                        onClick={() => {
+                                            setShowAllBooks(item.books);
+                                            setShowAllModalOpen(true);
+                                        }}>
+                                        Show All
                                     </button> */}
                                     </div>
                                     <div className=" flex items-center gap-2">
-                                        <button
-                                            className="cursor-pointer px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-md disabled:opacity-50"
-                                            disabled={booksPage === 1}
+                                        <button className="cursor-pointer px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-md disabled:opacity-50" disabled={booksPage === 1}
                                             onClick={() =>
                                                 setBooksPages((prev) => ({
                                                     ...prev,
                                                     [idx]: Math.max(1, (prev[idx] || 1) - 1),
                                                 }))
                                             }
-                                        >
-                                            ←
+                                        > ←
                                         </button>
                                         <span className="text-sm ">
                                             {booksPage} of {totalPages}
                                         </span>
-                                        <button
-                                            className=" cursor-pointer px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-md disabled:opacity-50"
-                                            disabled={booksPage === totalPages}
+                                        <button className=" cursor-pointer px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-md disabled:opacity-50" disabled={booksPage === totalPages}
                                             onClick={() =>
                                                 setBooksPages((prev) => ({
                                                     ...prev,
                                                     [idx]: Math.min(totalPages, (prev[idx] || 1) + 1),
                                                 }))
                                             }
-                                        >
-                                            →
+                                        > →
                                         </button>
                                     </div>
                                 </div>
                             </div>
-
                         </div>
                         ))}
                     </div>
@@ -834,13 +733,7 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
             {loading && (
                 <div className="flex w-full justify-start text-wrap gap-3 p-4 opacity-60">
                     <div>
-                        <Image
-                        src="/Athenia2.png"
-                        alt="Avatar"
-                        width={40}
-                        height={40}
-                        className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30"
-                        />
+                        <Image src="/Athenia2.png" alt="Avatar" width={40} height={40} className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30" />
                     </div>
                     <div className="p-5 max-w-[80%] rounded-lg space-y-4 bg-gradient-to-r from-slate-700/80 to-slate-600/80 text-white border border-slate-500/30 backdrop-blur-sm shadow-slate-900/20">
                         <div className="flex flex-row gap-2">
@@ -859,15 +752,7 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
                     <input type="text" placeholder="Type a message..." value={message} onChange={(e) => setMessage(e.target.value)} className=" flex-1 bg-transparent border-none outline-none text-base px-3 py-3 text-white placeholder:text-slate-400 font-medium" onKeyDown={(e) => e.key === 'Enter' && handleSend()} disabled={loading} />
                     <AnimatePresence mode="wait" initial={false}>
                         {!message.trim() ? (
-                            <motion.button key="mic" className=" w-11 h-11 flex items-center justify-center bg-white/10 hover:bg-blue-500/90 text-blue-400 hover:text-white rounded-full transition-all shadow focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer " onClick={() => {handleToast("Feature coming soon!", "warning"); }}
-                                type="button"
-                                aria-label="Start voice input"
-                                initial={{ opacity: 0, scale: 0.7 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.7 }}
-                                transition={{ duration: 0.22 }}
-                                disabled={loading}
-                            >
+                            <motion.button key="mic" className=" w-11 h-11 flex items-center justify-center bg-white/10 hover:bg-blue-500/90 text-blue-400 hover:text-white rounded-full transition-all shadow focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer " onClick={() => {handleToast("Feature coming soon!", "warning"); setVoiceModal(true)} } type="button" aria-label="Start voice input" initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.7 }} transition={{ duration: 0.22 }} disabled={loading} >
                                 <MicIcon style={{ width: 22, height: 22 }} />
                             </motion.button>
                         ) : (
@@ -967,22 +852,19 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
                                                     </div>
                                                     <span className="mt-5 text-center text-white/60 italic text-sm">Biblio record last updated: {modalData.timestamp?.replace("T", " ").replace("+08:00", "") || "—"}</span>
                                                 </div>
-                                                
                                             ) : null}
                                         </div>
                                     </div>
                                 </div>
                             </div>
                             <div className="bg-gray-900 border-t border-gray-800 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
-                                <button
+                                <button className="cursor-pointer inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto" type="button"
                                     onClick={() => {
                                         setModalOpen(false);
                                         setModalData(null);
                                         setModalError(null);
                                         setModalLoading(false);
                                     }}
-                                    className="cursor-pointer inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto"
-                                    type="button"
                                     >
                                     Continue
                                 </button>
@@ -1037,12 +919,7 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
                                                                     <label htmlFor="library" className="block text-orange-300 mb-2 text-sm">
                                                                         Select Pickup Library:
                                                                     </label>
-                                                                    <select
-                                                                        id="library"
-                                                                        value={selectedLibrary}
-                                                                        onChange={(e) => setSelectedLibrary(e.target.value)}
-                                                                        className="w-full bg-slate-900 text-white border border-purple-500 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                                                    >
+                                                                    <select id="library" value={selectedLibrary} onChange={(e) => setSelectedLibrary(e.target.value)} className="w-full bg-slate-900 text-white border border-purple-500 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
                                                                         <option value="" disabled>--</option>
                                                                         {libraries.map((lib) => (
                                                                             <option key={lib.library_id} value={lib.library_id}>
@@ -1085,9 +962,7 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
                     </div>
                 </div>
             )}
-
             {/* Reservation receipt */}
-            
             {receiptModalOpen && receiptData && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
                     <div className="relative w-full max-w-md bg-gradient-to-br from-white via-gray-100 to-white rounded-2xl shadow-2xl border border-gray-300 p-8">
@@ -1323,6 +1198,10 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
                         )}
                     </div>
                 </div>
+            )}
+            {/* Voice Modal */}
+            {voiceModal && (
+                <div className="bg-black/60 "></div>
             )}
             {/* Toast */}
             <ToastContainer/>
