@@ -39,7 +39,7 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
     const [message, setMessage] = useState("");
     const [loading, setLoading] = useState(false);
     // API
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+    // const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
     const kohaAPI = process.env.NEXT_PUBLIC_KOHA_URL;
     const kohaUsername = process.env.NEXT_PUBLIC_KOHA_USERNAME;
     const kohaPassword = process.env.NEXT_PUBLIC_KOHA_PASSWORD;
@@ -243,9 +243,12 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
         setChatHistory((prev) => [...prev, { type: "user", message }]);
         setLoading(true);
         setMessage("");
-        // console.log("cardNumber", cardNumber);
-
-
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+            controller.abort();
+            handleToast("Request timed out. Please try again.", "error");
+            console.log("Timed out, aborting request.");
+        }, 30000);
         try {
             const res = await fetch(`${backendUrl}/api/query/query_router`, {
             method: "POST",
@@ -257,8 +260,10 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
                 query: message,
                 sessionId: actualSessionId || (Date.now() / 1000 | 0), 
                 cardNumber: cardNumber
-            })
+            }),
+            signal: controller.signal
             });
+            clearTimeout(timeoutId);
             const data = await res.json();
             const responseType = data?.response?.[0]?.type;
 
@@ -519,7 +524,7 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
     const [voiceError, setVoiceError] = useState<string | null>(null);
     const [voiceTranscript, setVoiceTranscript] = useState<string>("");
     const [voiceLoading, setVoiceLoading] = useState(false);
-    const [voiceAnswer, setVoiceAnswer] = useState<any>(null); // can be string or booksearch object
+    const [voiceAnswer, setVoiceAnswer] = useState<any>(null); 
 
     const recognitionRef = useRef<any>(null);
 
@@ -528,7 +533,7 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
         setVoiceError(null);
         setVoiceTranscript("");
         if (!('webkitSpeechRecognition' in window)) {
-            setVoiceError("Speech recognition not supported in this browser.");
+            handleToast("Speech recognition not supported in this browser.", "error");
             return;
         }
         const SpeechRecognition = (window as any).webkitSpeechRecognition;
@@ -536,9 +541,10 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
         recognition.lang = 'en-US';
         recognition.interimResults = false;
         recognition.maxAlternatives = 1;
-
         recognition.onstart = () => setIsListening(true);
-        recognition.onerror = (event: any) => setVoiceError(event.error || "Voice recognition error.");
+        recognition.onerror = (event: any) => {
+            handleToast(event.error || "Voice recognition error.", "error");
+        };
         recognition.onend = () => setIsListening(false);
         recognition.onresult = (event: any) => {
             const transcript = event.results[0][0].transcript;
@@ -598,16 +604,13 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
         setVoiceLoading(false);
     };
 
-
-
-
     // Text-to-speech
     const speakText = (text: string) => {
         if ('speechSynthesis' in window) {
             const utterance = new window.SpeechSynthesisUtterance(text);
             utterance.lang = 'en-US';
-            utterance.onstart = () => setIsSpeaking(true); // <-- NEW
-            utterance.onend = () => setIsSpeaking(false);  // <-- NEW
+            utterance.onstart = () => setIsSpeaking(true); 
+            utterance.onend = () => setIsSpeaking(false); 
             window.speechSynthesis.speak(utterance);
         }
     };
@@ -621,6 +624,13 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
         voicePage * booksPerPage
     );
 
+
+    //alternative backend.
+    const [useAltBackend, setUseAltBackend] = useState(false);
+
+    const backendUrl = useAltBackend
+        ? "http://192.168.0.105:6968"
+        : process.env.NEXT_PUBLIC_BACKEND_URL || ""; 
 
 
     return (
@@ -642,7 +652,30 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
                         </span>
                         <p className="text-[8px] text-white">Session: {actualSessionId} <span className="text-orange-500 text-[10px]">(Debug Mode)</span></p>
                     </div>
-                    
+
+
+                </div>
+                {/* DEBUG MODE ONLY NOT PERMANENT */}
+                <div className="flex flex-col justify-center items-center ">
+                    <label className="switch">
+                        <input
+                            className="cb"
+                            type="checkbox"
+                            checked={useAltBackend}
+                            onChange={() => setUseAltBackend((prev) => !prev)}
+                        />
+                        <span className="toggle">
+                            <span className="flex flex-col right">A
+                                <span className="text-[8px]">nton</span>
+                            </span>
+                            <span className="left flex flex-col">G
+                                <span className="text-[8px]">erson</span>
+                            </span>
+                        </span>
+                    </label>
+                    <span className="text-xs text-white/70 block mt-1">
+                        Backend (Debug mode): <span className="font-mono text-orange-400">{backendUrl}</span>
+                    </span>
                 </div>
                 <div className="relative">
                     <div className="flex flex-col gap-1 items-center justify-center border-l border-white/50 h-5 mx-2 px-5">
@@ -682,7 +715,7 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
             <div ref={chatContainerRef} className="h-screen w-full  py-10 px-2 md:px-15 sm:px-10 lg:px-30 z-10 overflow-y-auto" style={{ maxHeight: "calc(100vh - 140px)" }}  >
             {chatHistory.length === 0 && !loading && (
                 <div className="flex flex-1 justify-center items-center select-none ">
-                    <div className="mx-auto p-8 w-150 rounded-2xl bg-gradient-to-r from-slate-900/50 to-slate-800/50 text-white text-center shadow-lg">
+                    <div className="mx-auto p-8 w-150 rounded-2xl text-white text-center  ">
                         <Image src="/Athenia2.png" alt="Athenia Avatar" width={120} height={120} className="mx-auto mb-3 w-30 h-30 rounded-full ring-2 ring-orange-300/50" />
                         <h2 className="text-3xl font-bold text-white drop-shadow">Welcome to AI Ask Librarian!</h2>
                         <p className="text-white/90 text-base">
@@ -918,7 +951,7 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
                                                         </h5>
                                                     </div>
                                                     <div className="max-h-120 p-3 overflow-y-auto grid grid-cols-1 gap-4 cursor-pointer ">
-                                                        <div className="rounded-md bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-20 border border-gray-100 rounded-2xl p-5 shadow-lg hover:shadow-xl transition-shadow duration-200">\
+                                                        <div className="rounded-md bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-20 border border-gray-100 rounded-2xl p-5 shadow-lg hover:shadow-xl transition-shadow duration-200">
                                                             <div className="max-h-80 overflow-y-auto flex flex-col justify-between items-center gap-2 mb-2">
                                                                 <div className="flex justify-between items-center  w-full ">
                                                                     <span className="font-semibold text-orange-500">Publication Place:</span>
@@ -1314,180 +1347,185 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
             )}
             {/* Voice Modal */}
             {voiceModal && (
-                <div className="flex w-full flex-col fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-5 "> 
-                    <div className="max-h-190 overflow-y-auto rounded-lg bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10 border border-gray-800 rounded-b-none text-left shadow-xl transition-all  sm:w-full sm:max-w-lg rounded-xl shadow-lg p-8 max-w-md w-full text-center relative">
-                        {/* <div className="fixed flex h-80 flex-col w-full border border-gray-100 bg-white"> */}
-                            <button className="absolute top-4 right-4 text-gray-400 hover:text-orange-500"
-                                onClick={() => {
-                                    stopListening();
-                                    setVoiceModal(false);
-                                    setVoiceError(null);
-                                    setVoiceTranscript("");
-                                    setVoiceAnswer(null);
-                                    setVoiceLoading(false);
-                                    setVoicePage(1);
-                                }}
-                            >
-                                <CircleX size={24} />
-                            </button>
-                            <h2 className="mt-2 text-3xl text-center font-bold mb-4 text-orange-600">Speech Recognition</h2>
-                            <p className="mb-4 text-sm text-white/70 text-center">Speak your message and it will be transcribed below. </p>
-                            {voiceLoading && (
-                                <div className="text-gray-500 flex justify-center mb-4">
-                                    <div className="animate-pulse flex flex-col items-center gap-4 w-60">
-                                    <div>
-                                        <div className="w-48 h-6 bg-slate-400 rounded-md"></div>
-                                        <div className="w-28 h-4 bg-slate-400 mx-auto mt-3 rounded-md"></div>
-                                    </div>
-                                    <div className="h-7 bg-slate-400 w-full rounded-md"></div>
-                                    <div className="h-7 bg-slate-400 w-full rounded-md"></div>
-                                    <div className="h-7 bg-slate-400 w-full rounded-md"></div>
-                                    <div className="h-7 bg-slate-400 w-1/2 rounded-md"></div>
-                                    </div>
-                                </div>
-                            )}
-                            {voiceAnswer && (
-                                <div className="mt-4 text-left">
-                                    <AnimatePresence>
-                                        {voiceAnswer.type === "booksearch" && (
-                                            <motion.div
-                                                key="voice-booksearch"
-                                                initial={{ opacity: 0, y: 30 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                exit={{ opacity: 0, y: 30 }}
-                                                transition={{ duration: 0.4, ease: "easeOut" }}
-                                                className="rounded-lg p-4 bg-slate-100/10"
-                                            >
-                                                {/* <div className="bg-slate-100 rounded-lg p-4 text-gray-800 mb-2">
-                                                    {voiceAnswer.message}
-                                                </div> */}
-                                                {voiceCurrentBooks.map((book: any, idx: number) => (
-                                                    <div key={idx} className="w-full p-4 space-y-3 bg-gradient-to-r from-slate-700/80 to-slate-600/80 rounded-xl shadow-md border-l-4 border-orange-500/100 text-white mb-2">
-                                                        <div className="flex gap-2 h-12 justify-between items-center">
-                                                            <h1 className="text-lg font-bold w-3/4 line-clamp-2">
-                                                                {book.title.length > 60 ? `${book.title.substring(0, 57)}...` : book.title}
-                                                            </h1>
-                                                            <span className={`text-sm  text-center font-semibold ${book.quantity_available > 0 ? 'bg-green-500' : 'bg-red-400'} text-white px-3 py-1 rounded-full`}>
-                                                                <Tooltip title={`Available: ${book.quantity_available}`}>
-                                                                    <IconButton size="small" sx={{ color: 'white' }}>
-                                                                        <InfoIcon fontSize="small" />
-                                                                    </IconButton>
-                                                                </Tooltip>
-                                                            </span>
-                                                        </div>
-                                                        <div className="flex justify-between text-gray-300 text-sm">
-                                                            <div>
-                                                                <span className="block text-white/50">Author</span>
-                                                                <span className="font-semibold">{book.author}</span>
-                                                            </div>
-                                                            <div>
-                                                                <span className="block text-white/50">Year</span>
-                                                                <span className="font-semibold">{book.year}</span>
-                                                            </div>
-                                                        </div>
-                                                        <div className="border border-gray-200 rounded-md px-4 py-3 bg-gray-50 text-sm text-black">
-                                                            <div className="flex justify-between gap-2">
-                                                                <span className="text-gray-500 w-1/2">Publisher</span>
-                                                                <span className="font-medium w-1/2">{book.publisher}</span>
-                                                            </div>
-                                                            <hr className="border-gray-300 w-full my-3" />
-                                                            <div className="flex justify-between mt-1 gap-2">
-                                                                <span className="text-gray-500 w-1/2">ISBN</span>
-                                                                <span className="w-1/2">{book.isbn}</span>
-                                                            </div>
-                                                            <hr className="border-gray-300 w-full my-3" />
-                                                            <div className="flex justify-between mt-1 gap-2">
-                                                                <span className="text-gray-500 w-1/2">Biblio ID</span>
-                                                                <span className="w-1/2">{book.biblio_id}</span>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex gap-2 mt-2">
-                                                            <button
-                                                                className="cursor-pointer px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-                                                                onClick={() => handleMoreInfo(book.biblio_id)}
-                                                            >
-                                                                More Info
-                                                            </button>
-                                                            <button
-                                                                className="cursor-pointer px-3 py-1 bg-orange-500 text-white rounded hover:bg-orange-600"
-                                                                onClick={() => {
-                                                                    setReserveData({
-                                                                        patron_id: patronId ? Number(patronId) : 0,
-                                                                        biblio_id: book.biblio_id,
-                                                                        book_title: book.title,
-                                                                    });
-                                                                    setReserveModalOpen(true);
-                                                                }}
-                                                            >
-                                                                Reserve Book
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                                {/* Pagination Controls */}
-                                                {voiceTotalPages > 1 && (
-                                                    <div className="flex justify-center items-center gap-2 mt-4">
-                                                        <button
-                                                            className="cursor-pointer px-2 py-1 rounded bg-gray-300 hover:bg-gray-400"
-                                                            disabled={voicePage === 1}
-                                                            onClick={() => setVoicePage(voicePage - 1)}
-                                                        >
-                                                            ←
-                                                        </button>
-                                                        <span className="text-[10px] text-white/70">
-                                                            {voicePage} of {voiceTotalPages}
-                                                        </span>
-                                                        <button
-                                                            className="cursor-pointer px-2 py-1 rounded bg-gray-300 hover:bg-gray-400"
-                                                            disabled={voicePage === voiceTotalPages}
-                                                            onClick={() => setVoicePage(voicePage + 1)}
-                                                        >
-                                                            →
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                </div>
-                            )}
-                            {voiceError && <div className="text-red-500 text-center mb-2">{voiceError}</div>}
-                            
-                            <div className="mt-3 sticky bottom-0 px-3 flex justify-center">
-
-                                <button className="relative flex items-center justify-center cursor-pointer"
-                                    onClick={isListening ? stopListening : startListening}
-                                    disabled={voiceLoading || isSpeaking} // <-- NEW
-                                    aria-label={isListening ? "Stop Listening" : "Start Listening"}
-                                    >
-                                    {/* Centered text */}
-                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                                        {isSpeaking ? (
-                                            <MicOff size={36} color="#ffffff" className="pointer-events-none animate-pulse" />
-                                        ) : (
-                                            <Mic size={36} color="#ffffff" />
-                                        )}
-                                    </div>
-                                    {/* Blob background */}
-                                    <div
-                                        className={`w-24 h-24 rounded-full transition-all duration-300 ${
-                                            isListening ? "bg-red-500 animate-blob-pulse" : "bg-orange-500"
-                                        }`}
-                                        style={{
-                                            boxShadow: isListening
-                                                ? "0 0 40px 10px rgba(255, 0, 0, 0.3)"
-                                                : "0 0 20px 4px rgba(255, 140, 0, 0.2)",
-                                            position: "relative",
-                                            overflow: "hidden",
-                                        }}
-                                    ></div>
+                <AnimatePresence>
+                    <div className="flex w-full flex-col fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-5 ">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.2, y: 100,  }}
+                            animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 40 }}
+                            transition={{ duration: 0.35, ease: "easeOut" }}
+                            className="max-h-190 overflow-y-auto rounded-lg bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10 border border-gray-800 rounded-b-none text-left shadow-xl transition-all  sm:w-full sm:max-w-lg rounded-xl shadow-lg p-8 max-w-md w-full text-center relative">
+                            {/* <div className="fixed flex h-80 flex-col w-full border border-gray-100 bg-white"> */}
+                                <button className="absolute top-4 right-4 text-gray-400 hover:text-orange-500 cursor-pointer"
+                                    onClick={() => {
+                                        stopListening();
+                                        setVoiceModal(false);
+                                        setVoiceError(null);
+                                        setVoiceTranscript("");
+                                        setVoiceAnswer(null);
+                                        setVoiceLoading(false);
+                                        setVoicePage(1);
+                                    }}
+                                >
+                                    <CircleX size={24} />
                                 </button>
-                            </div>
+                                <h2 className="mt-2 text-3xl text-center font-bold mb-4 text-orange-600">Speech Recognition</h2>
+                                <p className="mb-4 text-sm text-white/70 text-center">Speak your message and it will be transcribed below. </p>
+                                {voiceLoading && (
+                                    <div className="text-gray-500 flex justify-center mb-4">
+                                        <div className="animate-pulse flex flex-col items-center gap-4 w-60">
+                                        <div>
+                                            <div className="w-48 h-6 bg-slate-400 rounded-md"></div>
+                                            <div className="w-28 h-4 bg-slate-400 mx-auto mt-3 rounded-md"></div>
+                                        </div>
+                                        <div className="h-7 bg-slate-400 w-full rounded-md"></div>
+                                        <div className="h-7 bg-slate-400 w-full rounded-md"></div>
+                                        <div className="h-7 bg-slate-400 w-full rounded-md"></div>
+                                        <div className="h-7 bg-slate-400 w-1/2 rounded-md"></div>
+                                        </div>
+                                    </div>
+                                )}
+                                {voiceAnswer && (
+                                    <div className="mt-4 text-left">
+                                        <AnimatePresence>
+                                            {voiceAnswer.type === "booksearch" && (
+                                                <motion.div
+                                                    key="voice-booksearch"
+                                                    initial={{ opacity: 0, y: 30 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    exit={{ opacity: 0, y: 30 }}
+                                                    transition={{ duration: 0.4, ease: "easeOut" }}
+                                                    className="rounded-lg p-4 bg-slate-100/10"
+                                                >
+                                                    {/* <div className="bg-slate-100 rounded-lg p-4 text-gray-800 mb-2">
+                                                        {voiceAnswer.message}
+                                                    </div> */}
+                                                    {voiceCurrentBooks.map((book: any, idx: number) => (
+                                                        <div key={idx} className="w-full p-4 space-y-3 bg-gradient-to-r from-slate-700/80 to-slate-600/80 rounded-xl shadow-md border-l-4 border-orange-500/100 text-white mb-2">
+                                                            <div className="flex gap-2 h-12 justify-between items-center">
+                                                                <h1 className="text-lg font-bold w-3/4 line-clamp-2">
+                                                                    {book.title.length > 60 ? `${book.title.substring(0, 57)}...` : book.title}
+                                                                </h1>
+                                                                <span className={`text-sm  text-center font-semibold ${book.quantity_available > 0 ? 'bg-green-500' : 'bg-red-400'} text-white px-3 py-1 rounded-full`}>
+                                                                    <Tooltip title={`Available: ${book.quantity_available}`}>
+                                                                        <IconButton size="small" sx={{ color: 'white' }}>
+                                                                            <InfoIcon fontSize="small" />
+                                                                        </IconButton>
+                                                                    </Tooltip>
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex justify-between text-gray-300 text-sm">
+                                                                <div>
+                                                                    <span className="block text-white/50">Author</span>
+                                                                    <span className="font-semibold">{book.author}</span>
+                                                                </div>
+                                                                <div>
+                                                                    <span className="block text-white/50">Year</span>
+                                                                    <span className="font-semibold">{book.year}</span>
+                                                                </div>
+                                                            </div>
+                                                            <div className="border border-gray-200 rounded-md px-4 py-3 bg-gray-50 text-sm text-black">
+                                                                <div className="flex justify-between gap-2">
+                                                                    <span className="text-gray-500 w-1/2">Publisher</span>
+                                                                    <span className="font-medium w-1/2">{book.publisher}</span>
+                                                                </div>
+                                                                <hr className="border-gray-300 w-full my-3" />
+                                                                <div className="flex justify-between mt-1 gap-2">
+                                                                    <span className="text-gray-500 w-1/2">ISBN</span>
+                                                                    <span className="w-1/2">{book.isbn}</span>
+                                                                </div>
+                                                                <hr className="border-gray-300 w-full my-3" />
+                                                                <div className="flex justify-between mt-1 gap-2">
+                                                                    <span className="text-gray-500 w-1/2">Biblio ID</span>
+                                                                    <span className="w-1/2">{book.biblio_id}</span>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex gap-2 mt-2">
+                                                                <button
+                                                                    className="cursor-pointer px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                                                    onClick={() => handleMoreInfo(book.biblio_id)}
+                                                                >
+                                                                    More Info
+                                                                </button>
+                                                                <button
+                                                                    className="cursor-pointer px-3 py-1 bg-orange-500 text-white rounded hover:bg-orange-600"
+                                                                    onClick={() => {
+                                                                        setReserveData({
+                                                                            patron_id: patronId ? Number(patronId) : 0,
+                                                                            biblio_id: book.biblio_id,
+                                                                            book_title: book.title,
+                                                                        });
+                                                                        setReserveModalOpen(true);
+                                                                    }}
+                                                                >
+                                                                    Reserve Book
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                    {/* Pagination Controls */}
+                                                    {voiceTotalPages > 1 && (
+                                                        <div className="flex justify-center items-center gap-2 mt-4">
+                                                            <button
+                                                                className="cursor-pointer px-2 py-1 rounded bg-gray-300 hover:bg-gray-400"
+                                                                disabled={voicePage === 1}
+                                                                onClick={() => setVoicePage(voicePage - 1)}
+                                                            >
+                                                                ←
+                                                            </button>
+                                                            <span className="text-[10px] text-white/70">
+                                                                {voicePage} of {voiceTotalPages}
+                                                            </span>
+                                                            <button
+                                                                className="cursor-pointer px-2 py-1 rounded bg-gray-300 hover:bg-gray-400"
+                                                                disabled={voicePage === voiceTotalPages}
+                                                                onClick={() => setVoicePage(voicePage + 1)}
+                                                            >
+                                                                →
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </div>
+                                )}
+                                {voiceError && <div className="text-red-500 text-center mb-2">{voiceError}</div>}
+                    
+                                <div className="mt-3 sticky bottom-0 px-3 flex justify-center">
+                                    <button className="relative flex items-center justify-center cursor-pointer"
+                                        onClick={isListening ? stopListening : startListening}
+                                        disabled={voiceLoading || isSpeaking}
+                                        aria-label={isListening ? "Stop Listening" : "Start Listening"}
+                                        >
+                                        {/* Centered text */}
+                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                                            {isSpeaking ? (
+                                                <MicOff size={36} color="#ffffff" className="pointer-events-none animate-pulse" />
+                                            ) : (
+                                                <Mic size={36} color="#ffffff" />
+                                            )}
+                                        </div>
+                                        {/* Blob background */}
+                                        <div
+                                            className={`w-24 h-24 rounded-full transition-all duration-300 ${
+                                                isListening ? "bg-red-500 animate-blob-pulse" : "bg-orange-500"
+                                            }`}
+                                            style={{
+                                                boxShadow: isListening
+                                                    ? "0 0 40px 10px rgba(255, 0, 0, 0.3)"
+                                                    : "0 0 20px 4px rgba(255, 140, 0, 0.2)",
+                                                position: "relative",
+                                                overflow: "hidden",
+                                            }}
+                                        ></div>
+                                    </button>
+                                </div>
+                        </motion.div>
+                        <div className="border border-white/10 bg-gray-900 h-10 rounded-lg rounded-t-none text-left shadow-xl transition-all  sm:w-full sm:max-w-lg rounded-xl shadow-lg p-5 max-w-md w-full text-center relative">
+                        </div>
                     </div>
-                    <div className="border border-white/10 bg-gray-900 h-10 rounded-lg rounded-t-none text-left shadow-xl transition-all  sm:w-full sm:max-w-lg rounded-xl shadow-lg p-5 max-w-md w-full text-center relative">
-
-                    </div>
-                </div>
+                </AnimatePresence>
             )}
             {/* Toast */}
             <ToastContainer/>

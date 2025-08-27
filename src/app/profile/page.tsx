@@ -74,6 +74,7 @@ export default function Profile() {
                 if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
                 const data = await res.json();
                 // console.log(data);
+                console.log(data + " fetched");
                 setProfile(data);
             } catch (err) {
                 console.error("Failed to fetch profile:", err);
@@ -458,54 +459,59 @@ export default function Profile() {
                         {overdues.length > 0 ? (
                             overdues.map((book, index) => (
                                 <BookCard
-                                key={index}
-                                title={`📚 ${book.title ?? "Untitled"}`}
-                                author={book.author ?? "Unknown"}
-                                due={new Date(book.due_date ?? "N/A").toLocaleString("en-US", { timeZone: "Asia/Singapore", year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                actions={[{ label: "Return", style: "red"  , 
-                                            onClick: () => {
-                                                setSelectedBook({ ...borrowed, borrowedBooks: borrowedBooks[index] });
-                                                fetchRenewDetails(borrowedBooks[index]);
-                                                setRenewModal(true);
-                                            }
+                                    key={index}
+                                    title={`📚 ${overdueBookdetails[index]?.title ?? book.title ?? "Untitled"}`}
+                                    author={overdueBookdetails[index]?.author ?? book.author ?? "Unknown"}
+                                    due={new Date(book.due_date ?? "N/A").toLocaleString("en-US", { timeZone: "Asia/Singapore", year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                    actions={[{
+                                        label: "Return",
+                                        style: "red",
+                                        onClick: () => {
+                                            setSelectedBook({ ...overdues[index], borrowedBooks: borrowedBooks[index] });
+                                            setReturnModal(true);
                                         }
-                                    ]}
+                                    }]}
                                 />
                             ))
                         ) : (
                             <p className="text-center text-sm text-white/50">No overdue books.</p>
                         )}
-                        
                     </SectionCard>
 
                     {/* Borrowed Books */}
                     <SectionCard title="Borrowed Books" icon={<BookAIcon className="w-5 h-5" />}>
                         {borrowed.length > 0 ? (
-                            borrowed.map((book, index) => (
-                                <BookCard
-                                    key={index}
-                                    title={`📚 ${book.title ?? "Untitled"}`}
-                                    author={book.author ?? "Unknown"}
-                                    due={new Date(borrowedBooks[index]?.due_date ?? "N/A").toLocaleString("en-US", { timeZone: "Asia/Singapore", year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                    actions={[
-                                        { label: "Renew", style: "orange", 
-
-                                            onClick: () => {
-                                                setSelectedBook({ ...borrowed, borrowedBooks: borrowedBooks[index] });
-                                                fetchRenewDetails(borrowedBooks[index]);
-                                                setRenewModal(true);
-                                            } 
-                                        },
-                                        { label: "Return", style: "red" ,
-
-                                            onClick: () => {
-                                                // setSelectedBook({ ...borrowed, hold: holds[index] }); 
-                                                setReturnModal(true);
-                                            } 
-                                        }
-                                    ]}
-                                />
-                            ))
+                            borrowed
+                                .filter((_, index) => {
+                                    const dueDate = new Date(borrowedBooks[index]?.due_date);
+                                    return dueDate >= new Date(); // Only show books not overdue
+                                })
+                                .map((book, index) => (
+                                    <BookCard
+                                        key={index}
+                                        title={`📚 ${book.title ?? "Untitled"}`}
+                                        author={book.author ?? "Unknown"}
+                                        due={new Date(borrowedBooks[index]?.due_date ?? "N/A").toLocaleString("en-US", { timeZone: "Asia/Singapore", year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                        actions={[
+                                            {
+                                                label: "Renew",
+                                                style: "orange",
+                                                onClick: () => {
+                                                    setSelectedBook({ ...borrowed, borrowedBooks: borrowedBooks[index] });
+                                                    fetchRenewDetails(borrowedBooks[index]);
+                                                    setRenewModal(true);
+                                                }
+                                            },
+                                            {
+                                                label: "Return",
+                                                style: "red",
+                                                onClick: () => {
+                                                    setReturnModal(true);
+                                                }
+                                            }
+                                        ]}
+                                    />
+                                ))
                         ) : (
                             <p className="text-center text-sm text-white/50">No borrowed books.</p>
                         )}
@@ -632,8 +638,8 @@ export default function Profile() {
             {returnModal && (
                 <div className="fixed h-screen bg-black/80 z-100 w-screen overflow-y-auto ">
                     <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0" >
-                        <div className="relative transform overflow-hidden rounded-lg bg-clip-padding backdrop-filter  backdrop-blur-sm bg-opacity-10 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg" >
-                        <div className="bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10 border border-gray-800 px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                        <div className="relative transform overflow-hidden bg-clip-padding rounded-lg backdrop-filter backdrop-blur-sm bg-opacity-10 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg" >
+                        <div className="bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10 border rounded-lg border-gray-800 px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
                             <div className="sm:flex sm:items-start">
                             <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10" >
                                 <CircleAlertIcon style={{color: "blue"}}/> 
@@ -647,7 +653,7 @@ export default function Profile() {
                                 </h3>
                                 <div className="mt-2">
                                 <p className="text-sm text-white/80">
-                                    Please be informed that returning books is not supported by this application. You will have to go to the library to return books. Thank you for your understanding, and please contact support if you have any questions.
+                                    Please be informed that returning books is not supported by this application. You will have to go to the library to return books. Kindly note that fees may apply if books are not returned on or before the due date. Thank you for your understanding, and please contact support if you have any questions.
                                 </p>
                                 </div>
                             </div>
@@ -757,7 +763,7 @@ export default function Profile() {
                                     Borrowed History
                                 </h3>
                                 {checkoutHistory.length > 0 ? (
-                                    <div className="max-h-120 p-3 overflow-y-auto grid grid-cols-1 gap-4 cursor-pointer border ">
+                                    <div className="max-h-120 p-3 overflow-y-auto grid grid-cols-1 gap-4 cursor-pointer  ">
                                         {checkoutHistory.map((item, idx) => (
                                             <div
                                                 key={idx}
