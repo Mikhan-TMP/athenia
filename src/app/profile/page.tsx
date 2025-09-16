@@ -1,10 +1,11 @@
 'use client';
-import { CircleAlert, BookAIcon, BookOpen, ArrowLeft, Pencil, Book, BookAlert, BookOpenText, CircleAlertIcon, InfoIcon } from "lucide-react";
+import { CircleAlert, BookAIcon, BookOpen, ArrowLeft, Pencil, Book, BookAlert, BookOpenText, CircleAlertIcon, InfoIcon, Mail, Calendar, CardSim, IdCard, IdCardIcon, UserX2Icon, UserCheckIcon, UserCircle, UserCog2, Calendar1Icon, Building2Icon, Contact, UserRound, Settings2, Settings, KeyIcon, Key, KeyRound, LibraryBig } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { ToastContainer, toast } from 'react-toastify';
 import { useRouter } from 'next/navigation';
 import Image from "next/image";
+import { Card } from "@mui/material";
 
 
 export default function Profile() {
@@ -22,9 +23,11 @@ export default function Profile() {
     const [borrowedBooks, setBorrowedBooks] = useState<any>(null);
     const [patronId, setPatronId] = useState<string | null>(null);
     const [checkoutHistory, setCheckoutHistory] = useState<any[]>([]);
+    const [accountInformation, setAccountInformation] = useState<any>(null);
     const [cardNumber, setCardNumber] = useState<string | null>(null);
     const router = useRouter();
     const [userName, setUserName] = useState<string | null>(null);
+    const [categories, setCategories] = useState<any[]>([]);
 
     // MODALS
     const [bookModal , setShowBookModal] = useState(false);
@@ -33,7 +36,7 @@ export default function Profile() {
     const [returnModal, setReturnModal] = useState(false);
     const [renewModal, setRenewModal] = useState(false);
     const [borrowedHistoryModal, setBorrowedHistoryModal] = useState(false);
-
+    const [accountInformationModal, setAccountInformationModal] = useState(false);
     // renewal
     const [renew, setRenew] = useState<any>(null);
     // FETCH THE PATRON FROM LOCAL STORAGE
@@ -53,8 +56,6 @@ export default function Profile() {
         }
     }, []);
 
-
-
     // Fetch profile details on mount
     useEffect(() => {
         const fetchProfile = async () => {
@@ -73,8 +74,13 @@ export default function Profile() {
 
                 if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
                 const data = await res.json();
-                // console.log(data);
-                console.log(data + " fetched");
+                // if category_id is ST, then display Student
+                if (data.category_id === "ST") {
+                    data.category_name = "Student";
+                }
+
+                console.log(data);
+                // console.log(profileWithCategoryNames + " fetched");
                 setProfile(data);
             } catch (err) {
                 console.error("Failed to fetch profile:", err);
@@ -96,7 +102,7 @@ export default function Profile() {
                 if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
                 const data = await res.json();
                 setHolds(data);
-                console.log("holds", data);
+                // console.log("holds", data)s;
 
                 // Fetch all book details in parallel using type "biblio"
                 const bookDetails = await Promise.all(
@@ -125,7 +131,7 @@ export default function Profile() {
 
                 if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
                 const data = await res.json();
-                console.log("checkouts", data);
+                // console.log("checkouts", data);
                 setBorrowedBooks(data);
 
                 const today = new Date();
@@ -134,7 +140,7 @@ export default function Profile() {
                     return dueDate < today;
                 });
                 setOverDue(overdues);
-                console.log("overdues", overdues);
+                // console.log("overdues", overdues);
 
                 // Fetch all book details in parallel using type "item"
                 const bookDetails = await Promise.all(
@@ -274,8 +280,8 @@ export default function Profile() {
     };
 
     const handleRenewHold = async (checkout: any) => {
-        console.log(checkout)
-        console.log(checkout.borrowedBooks.checkout_id);
+        // console.log(checkout)
+        // console.log(checkout.borrowedBooks.checkout_id);
         try {
             let checkoutId = checkout.borrowedBooks.checkout_id
             const url = `${kohaAPI}/api/v1/checkouts/${checkoutId}/renewals`;
@@ -310,7 +316,7 @@ export default function Profile() {
 
     const fetchRenewDetails = async (checkout: any) => {
         setRenew(checkout);
-        console.log(checkout);
+        // console.log(checkout);
     }
 
     const fetchCheckoutHistory = async () => {
@@ -331,7 +337,7 @@ export default function Profile() {
             if (res.ok) {
                 const data = await res.json();
                 setCheckoutHistory(data); // <-- Populate the modal with history data
-                console.log("Checkout History:", data);
+                // console.log("Checkout History:", data);
             } else {
                 console.error("Failed to fetch checkout history:", res.statusText);
             }
@@ -339,36 +345,49 @@ export default function Profile() {
             console.error("Error fetching checkout history:", err);
         }
     }
+    
+    const fetchAccountInformation = async () => {
+        try {
+            const url = `${kohaAPI}/api/v1/patrons/${patronId}/account`;
+            const basicAuth = `Basic ${btoa(unescape(encodeURIComponent(`${kohaUsername}:${kohaPassword}`)))}`;
+
+            const res = await fetch(url, {
+                method: "GET",
+                headers: {
+                    "Authorization": basicAuth,
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                    "ngrok-skip-browser-warning": "true"
+                }
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                setAccountInformation(data); 
+                console.log("Account Information:", data);
+            } else {
+                console.error("Failed to fetch account information:", res.statusText);
+            }
+        }catch (err) {
+            console.error("Error fetching account information:", err);
+        }
+    }
 
 
     return (
-        <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
-            className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 to-black text-white"
-            >
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }} className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 to-black text-white">
         {/* Header */}
-            <motion.div
-            initial={{ y: -50, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-            className="sticky top-0 z-10 bg-slate-950 border-b border-white/10 shadow-md px-6 py-4 flex items-center justify-between"
-            >
+            <motion.div initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.6, ease: "easeOut" }} className="sticky top-0 z-10 bg-slate-950 border-b border-white/10 shadow-md px-6 py-4 flex items-center justify-between" >
                 <div className="flex items-center gap-3">
-                <button
-                    onClick={() => window.location.href = "/chat-window"}
-                    className="flex items-center gap-2 text-sm text-white hover:text-orange-400 transition cursor-pointer"
-                >
-                    <ArrowLeft className="w-4 h-4" />
-                    Back to Chat
-                </button>
+                    <button onClick={() => window.location.href = "/chat-window"} className="flex items-center gap-2 text-sm text-white hover:text-orange-400 transition cursor-pointer" >
+                        <ArrowLeft className="w-4 h-4" /> Back to Chat
+                    </button>
                 </div>
                 <div>
-                <button className="cursor-pointer flex items-center gap-2 text-sm bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-lg shadow transition">
+                {/* <button className="cursor-pointer flex items-center gap-2 text-sm bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-lg shadow transition">
                     <Pencil className="w-4 h-4" />
                     Edit Profile
-                </button>
+                </button> */}
                 </div>
             </motion.div>
 
@@ -376,63 +395,129 @@ export default function Profile() {
             {profile && holds && (
             <div className="flex flex-col lg:flex-row justify-center lg:items-start items-center gap-6 px-4 py-6">
                 {/* Left Panel */}
-                <motion.div
-                    initial={{ x: -60, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    transition={{ duration: 0.6, ease: "easeOut" }}
-                    className="w-full max-w-xl space-y-6"
-                    >
+                <motion.div initial={{ x: -60, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ duration: 0.6, ease: "easeOut" }} className="w-full max-w-xl space-y-6" >
                     {/* Profile Card */}
                     <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-slate-800 via-slate-900 to-slate-800 shadow-xl p-6 space-y-5">
-                        <div className="flex flex-col items-center text-center space-y-3">
-                        <Image
-                            src="/default-user.webp"
-                            alt="User Profile"
-                            width={112}
-                            height={112}
-                            className="w-28 h-28 rounded-full ring-2 ring-orange-400 shadow-md object-cover hover:scale-105 transition-transform duration-200 cursor-pointer"
-                        />
-                        <div>
-                            <h2 className="text-2xl font-bold">{profile.preferred_name ?? "N/A"} {profile.surname ?? ""}</h2>
-                            <p className="text-sm text-gray-300">{profile.email ?? "N/A"}</p>
+                        <div className="flex w-full gap-2 items-center space-y-3">
+                            <Image src="/default-user.webp" alt="User Profile" width={112} height={112} className="w-28 h-28 rounded-full ring-2 ring-orange-400 shadow-md object-cover hover:scale-105 transition-transform duration-200 cursor-pointer" />
+                            <div className="">
+                                <h2 className="text-3xl font-bold text-orange-400">{profile.preferred_name ?? "N/A"} {profile.surname ?? ""}</h2>
+                                <div className="flex items-center">
+                                    <Mail className="w-4 h-4 inline-block text-white/60 mr-1" />
+                                    <p className="text-sm text-gray-300">{profile.email ?? "N/A"}</p>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-1  mt-1 select-none ">
+                                    <p className="text-sm text-gray-300 bg-blue-500/50 px-3 py-1 mr-2 rounded-lg shadow-md cursor-pointer">{profile.category_name ?? "N/A"}</p>
+                                    <p className="text-sm text-gray-300 bg-green-500/50 px-3 py-1 rounded-lg shadow-md cursor-pointer">{profile.address ?? "N/A"}</p>
+                                </div>
+                            </div>
                         </div>
-                        </div>
-                        <div className="gap-4 flex flex-col text-sm text-white/90">
-                        <div className="flex justify-between">
-                            <span className="font-medium text-white/60">Member Since:</span>
-                            <span>{profile.date_enrolled ?? "N/A"}</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="font-medium text-white/60">Card Number:</span>
-                            <span>{profile.cardnumber ?? "N/A"}</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="font-semibold text-orange-400">Patron ID:</span>
-                            <span>{profile.patron_id ?? "N/A"}</span>
-                        </div>
+                        <div className="w-full flex flex-wrap items-center justify-center gap-5 select-none sm:flex-row sm:justify-between sm:flex-nowrap">
+                            <div className="p-5 rounded-2xl w-50 bg-white/10 flex flex-col justify-center items-center cursor-pointer hover:bg-white/20 shadow-md">
+                                <Calendar className="w-6 h-6 mb-1" />
+                                <span className="text-green-400 text-[11px]">Member Since</span>
+                                <p className="text-lg font-bold text-gray-300">{profile.date_enrolled ?? "N/A"}</p>
+                            </div>
+                            <div className="p-5 rounded-2xl w-50 bg-white/30 flex flex-col justify-center items-center cursor-pointer hover:bg-white/40 shadow-md">
+                                <IdCard className="w-6 h-6 mb-1" />
+                                <span className="text-green-400 text-[11px]">Card Number</span>
+                                <p className="text-lg font-bold text-gray-300">{profile.cardnumber ?? "N/A"}</p>
+                            </div>
+                            <div className="p-5 rounded-2xl w-50 bg-white/10 flex flex-col justify-center items-center cursor-pointer hover:bg-white/20 shadow-md">
+                                <UserCheckIcon className="w-6 h-6 mb-1" />
+                                <span className="text-green-400 text-[11px]">Patron ID</span>
+                                <p className="text-lg font-bold text-gray-300">{profile.patron_id ?? "N/A"}</p>
+                            </div>
                         </div>
                     </div>
 
                     {/* Additional Details */}
                     <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-slate-700 via-slate-800 to-slate-700 shadow-xl p-6 space-y-4">
-                        <div className="flex flex-col gap-4 text-sm text-white/90">
-                        <InfoRow label="Category ID" value={profile.category_id ?? "N/A"} />
-                        <InfoRow label="Date of Birth" value={profile.date_of_birth ?? "N/A"} />
-                        <InfoRow label="Registered Library" value={profile.library_id ?? "N/A"} />
-                        <InfoRow label="Expires" value={profile.expiry_date ?? "N/A"} />
-                        <InfoRow label="Gender" value={profile.gender ?? "N/A"} />
-                        <InfoRow label="Phone" value={profile.phone ?? "N/A"} />
+                        <div className="flex items-center mb-2 gap-2">
+                            <UserCog2 className="w-6 h-6 text-white" />
+                            <h3 className="text-lg font-semibold">Additional Details</h3>
                         </div>
+                        <div className="flex flex-row justify-between ">
+                            {/* Left */}
+                            <div className="flex flex-col gap-4 text-sm text-white/90">
+                                <div className="flex items-center">
+                                    <Calendar1Icon className="w-5 h-5 text-white/60 mr-2" />
+                                    <div className="flex flex-col w-full">
+                                        <span className="text-[12px]">Date of Birth</span>
+                                        <span className="text-lg font-bold">{profile.date_of_birth ?? "N/A"}</span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center">
+                                    <Building2Icon className="w-5 h-5 text-white/60 mr-2" />
+                                    <div className="flex flex-col w-full">
+                                        <span className="text-[12px]">Registered Library</span>
+                                        <span className="text-lg font-bold">{profile.library_id ?? "N/A"}</span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center">
+                                    <InfoIcon className="w-5 h-5 text-white/60 mr-2" />
+                                    <div className="flex flex-col w-full">
+                                        <span className="text-[12px]">Membership Expiration</span>
+                                        <span className="text-lg font-bold">{profile.expiry_date ?? "N/A"}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            {/* Right */}
+                            <div className="flex flex-col gap-4 text-sm text-white/90">
+                                <div className="flex items-center">
+                                    <Contact className="w-5 h-5 text-white/60 mr-2" />
+                                    <div className="flex flex-col w-full">
+                                        <span className="text-[12px]">Updated On</span>
+                                        <span className="text-lg font-bold">
+                                            {profile.updated_on
+                                                ? new Date(profile.updated_on).toLocaleString("en-US", {
+                                                        year: "numeric",
+                                                        month: "short",
+                                                        day: "2-digit",
+                                                        hour: "2-digit",
+                                                        minute: "2-digit"
+                                                    })
+                                                : "N/A"}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center">
+                                    <Contact className="w-5 h-5 text-white/60 mr-2" />
+                                    <div className="flex flex-col w-full">
+                                        <span className="text-[12px]">Phone Number</span>
+                                        <span className="text-lg font-bold">{profile.phone ?? "N/A"}</span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center">
+                                    <UserRound className="w-5 h-5 text-white/60 mr-2" />
+                                    <div className="flex flex-col w-full">
+                                        <span className="text-[12px]">Gender</span>
+                                        <span className="text-lg font-bold">{profile.gender ?? "N/A"}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
                     </div>
+                    {/* Profile Actions */}
+                    <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-slate-700 via-slate-800 to-slate-700 shadow-xl p-6 space-y-4">
+                        <h3 className="text-lg font-semibold mb-2">Profile Actions</h3>
+                        <div className="flex justify-between gap-2 ">
+                            <div className="flex items-center gap-2 justify-center w-1/2 bg-orange-600 rounded-lg px-3 py-2 cursor-pointer hover:bg-orange-500 shadow-lg">
+                                <Settings className="w-4 h-4 text-white" />
+                                <button className="text-sm text-white/90 hover:text-white">Edit Profile</button>
+                            </div>
+                            <div className="flex items-center gap-2 justify-center w-1/2 bg-white rounded-lg px-3 py-2 cursor-pointer hover:bg-gray-100 shadow-lg">
+                                <KeyRound className="w-4 h-4 text-black" />
+                                <button className="text-sm hover:text-black text-black cursor-pointer">Change Password</button>
+                            </div>
+                        </div>
+                    </div>                    
                 </motion.div>
 
                 {/* Right Panel */}
-                <motion.div
-                initial={{ x: 60, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
-                className="w-full max-w-2xl space-y-6"
-                >
+                <motion.div initial={{ x: 60, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }} className="w-full max-w-2xl space-y-6" >
                 {/* Overview */}
                     <SectionCard title="📊 Account Overview">
                         <div className="grid grid-cols-3 gap-4 text-sm">
@@ -441,7 +526,7 @@ export default function Profile() {
                             <StatCard label="Overdue Items" value={overdues.length ?? 0} color="red" />
                         </div>
                         <p className="text-sm text-white/60">Keep track of your account status and avoid overdue items.</p>
-                        <div className="gap-4 text-sm">
+                        <div className="gap-4 text-sm flex flex-wrap p-3">
                             <button className="cursor-pointer flex justify-center items-center gap-2 px-5 py-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg shadow transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2"
                                 onClick={() => {
                                     setBorrowedHistoryModal(true);
@@ -450,6 +535,15 @@ export default function Profile() {
                             >
                                 <BookOpenText className="w-5 h-5" />
                                 View History
+                            </button>
+                            <button className="cursor-pointer flex justify-center items-center gap-2 px-5 py-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg shadow transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2"
+                                onClick={() => {
+                                    setAccountInformationModal(true);
+                                    fetchAccountInformation();
+                                }}
+                            >
+                                <LibraryBig className="w-5 h-5" />
+                                Account Information
                             </button>
                         </div>
                     </SectionCard>
@@ -577,7 +671,7 @@ export default function Profile() {
             {cancelModal && selectedBook && (
                 <div className="fixed h-screen bg-black/80 z-100 w-screen overflow-y-auto ">
                     <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0" >
-                        <div className="relative transform overflow-hidden rounded-lg bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10 border border-gray-800 rounded-b-none text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg" >
+                        <div className="relative transform overflow-hidden rounded-lg bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10  border border-gray-800 rounded-b-none text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg" >
                         <div className="bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10  rounded-lg rounded-b-none px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
                             <div className="sm:flex sm:items-start">
                             <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10" >
@@ -821,6 +915,67 @@ export default function Profile() {
                             <button
                                 onClick={() => {
                                     setBorrowedHistoryModal(false);
+                                }}
+                                className="cursor-pointer inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto"
+                                type="button"
+                                >
+                                Close
+                            </button>
+                        </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Account Information Modal */}
+            {accountInformationModal && (
+                <div className="fixed h-screen bg-black/80 z-100 w-screen overflow-y-auto  ">
+                    <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0 " >
+                        <div className="relative transform overflow-hidden rounded-lg  text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg" >
+                        <div className="  bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10 border border-gray-800 rounded-lg rounded-b-none px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                            <div className="mt-4 p-3">
+                                <h3 className="text-2xl font-bold text-orange-600 mb-4 flex items-center gap-2">
+                                    <LibraryBig className="w-6 h-6 text-orange-500" />
+                                    Account Information
+                                </h3>
+                                {accountInformation ? (
+                                    <div className="space-y-4">
+                                        <div>
+                                            <span className="font-semibold text-orange-400">Balance:</span>
+                                            <span className="ml-2 text-white">{accountInformation.balance}</span>
+                                        </div>
+                                        <div>
+                                            <span className="font-semibold text-green-400">Outstanding Credits:</span>
+                                            <span className="ml-2 text-white">{accountInformation.outstanding_credits.total}</span>
+                                            {accountInformation.outstanding_credits.lines.length > 0 && (
+                                                <ul className="mt-2 pl-4 list-disc text-white/80">
+                                                    {accountInformation.outstanding_credits.lines.map((line: any, idx: number) => (
+                                                        <li key={idx}>{JSON.stringify(line)}</li>
+                                                    ))}
+                                                </ul>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <span className="font-semibold text-red-400">Outstanding Debits:</span>
+                                            <span className="ml-2 text-white">{accountInformation.outstanding_debits.total}</span>
+                                            {accountInformation.outstanding_debits.lines.length > 0 && (
+                                                <ul className="mt-2 pl-4 list-disc text-white/80">
+                                                    {accountInformation.outstanding_debits.lines.map((line: any, idx: number) => (
+                                                        <li key={idx}>{JSON.stringify(line)}</li>
+                                                    ))}
+                                                </ul>
+                                            )}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <p className="text-base text-orange-300 font-medium">No account information found.</p>
+                                )}
+                            </div>
+                        </div>
+                        <div className="bg-gray-900 border-t border-gray-800 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                            <button
+                                onClick={() => {
+                                    setAccountInformationModal(false);
                                 }}
                                 className="cursor-pointer inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto"
                                 type="button"

@@ -106,11 +106,13 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
     //voice modal.
     const [voiceModal, setVoiceModal] = useState<boolean>(false);
     //pagination
-    const totalPages = Math.ceil(books.length / booksPerPage);
-    const currentBooks = books.slice(
-        (currentPage - 1) * booksPerPage,
-        currentPage * booksPerPage
-    );
+    // const totalPages = Math.ceil(books.length / booksPerPage);
+    // const currentBooks = books.slice(
+    //     (currentPage - 1) * booksPerPage,
+    //     currentPage * booksPerPage
+    // );
+
+
 
     type ChatMessage = | { type: "ai"; message: string } | { type: "user"; message: string } | { type: "booksearch" | "recommendation" | "lookup" | "specific_book_search";
             message: string;
@@ -250,7 +252,9 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
             console.log("Timed out, aborting request.");
         }, 30000);
         try {
-            const res = await fetch(`${backendUrl}/api/query/query_router`, {
+            // const res = await fetch(`${backendUrl}/api/query/query_router`, {
+            const res = await fetch(`${backendUrl}/api/rasa/ask_librarian`, {
+
             method: "POST",
             headers: { 
                 "Content-Type": "application/json",
@@ -263,11 +267,18 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
             }),
             signal: controller.signal
             });
+
+            // console log the payload
+            console.log("Payload:", {
+                query: message,
+                sessionId: actualSessionId || (Date.now() / 1000 | 0),
+                cardNumber: cardNumber
+            });
             clearTimeout(timeoutId);
             const data = await res.json();
             const responseType = data?.response?.[0]?.type;
 
-            // console.log(data);
+            console.log(data);
 
             if (!data.response || data.response.length === 0) {
                 setChatHistory((prev) => [
@@ -629,7 +640,7 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
     const [useAltBackend, setUseAltBackend] = useState(false);
 
     const backendUrl = useAltBackend
-        ? "http://192.168.0.105:6968"
+        ? "http://192.168.0.117:6969"
         : process.env.NEXT_PUBLIC_BACKEND_URL || ""; 
 
 

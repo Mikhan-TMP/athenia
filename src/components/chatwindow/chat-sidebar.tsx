@@ -46,16 +46,25 @@ export default function ChatSidebar({
 
         // Fetch chat history if card number exists
         if (storedCardNumber) {
-            // const fetchChatHistory = async () => {
-            //     try {
-            //         const response = await axios.get(`${backendUrl}/api/chat/get-chat-history?cardnumber=${storedCardNumber}`);
-            //         setChatHistories(response.data as any[]);
-            //         console.log("Chat history fetched:", response.data);
-            //     } catch (error) {
-            //         console.error("Failed to fetch chat history:", error);
-            //     }
-            // };
-            // fetchChatHistory();
+            const fetchChatHistory = async () => {
+                try {
+                    const response = await axios.get(`${backendUrl}/api/chat/get-chat-history?cardnumber=${storedCardNumber}`);
+                    // Normalize response
+                    const normalized = (Array.isArray(response.data) ? response.data : [response.data]).map((item: any) => ({
+                        sessionId: item.sessionID || item.sessionId,
+                        cardNumber: item.cardnumber || item.cardNumber,
+                        messages: item.history || item.messages,
+                        chatName: item.name || item.chatName || "Chat Session",
+                        startTime: item.history?.[0]?.timestamp || item.startTime,
+                        ...item,
+                    }));
+                    setChatHistories(normalized);
+                    console.log("Chat history fetched:", normalized);
+                } catch (error) {
+                    console.error("Failed to fetch chat history:", error);
+                }
+            };
+            fetchChatHistory();
         }
     }, []);
 
