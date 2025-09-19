@@ -252,8 +252,8 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
             console.log("Timed out, aborting request.");
         }, 30000);
         try {
-            // const res = await fetch(`${backendUrl}/api/query/query_router`, {
-            const res = await fetch(`${backendUrl}/api/rasa/ask_librarian`, {
+            const res = await fetch(`${backendUrl}/api/query/query_router`, {
+            // const res = await fetch(`${backendUrl}/api/rasa/ask_librarian`, {
 
             method: "POST",
             headers: { 

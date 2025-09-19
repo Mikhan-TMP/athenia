@@ -37,6 +37,14 @@ export default function Profile() {
     const [renewModal, setRenewModal] = useState(false);
     const [borrowedHistoryModal, setBorrowedHistoryModal] = useState(false);
     const [accountInformationModal, setAccountInformationModal] = useState(false);
+    const [changePasswordModal, setChangePasswordModal] = useState(true);
+    const [isChangingPassword, setIsChangingPassword] = useState(false); // <-- Add this state
+    const [currentPassword, setCurrentPassword] = useState("");
+    const [newPassword, setNewPassword] = useState("");
+    const [confirmNewPassword, setConfirmNewPassword] = useState("");
+    const [newPasswordError, setNewPasswordError] = useState("");
+    const [confirmNewPasswordError, setConfirmNewPasswordError] = useState("");
+
     // renewal
     const [renew, setRenew] = useState<any>(null);
     // FETCH THE PATRON FROM LOCAL STORAGE
@@ -374,6 +382,84 @@ export default function Profile() {
     }
 
 
+    const handleChangePassword = async () => {
+        // Validate new password requirements
+        if (newPassword.length < 8) {
+            handleToast("Password must be at least 8 characters long.", "warning");
+            return;
+        }
+        if (newPassword !== confirmNewPassword) {
+            handleToast("Passwords do not match.", "warning");
+            return;
+        }
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{9,}$/;
+        if (!passwordRegex.test(newPassword)) {
+            handleToast("Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.", "warning");
+            return;
+        }
+
+        setIsChangingPassword(true); // <-- Start loading
+        const startTime = Date.now();
+
+        try {
+            const validationUrl = `${kohaAPI}/api/v1/auth/password/validation` ;
+            const basicAuth = `Basic ${btoa(unescape(encodeURIComponent(`${kohaUsername}:${kohaPassword}`)))}`;
+
+            const validationRes = await fetch(validationUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                    "Authorization": basicAuth,
+                    "ngrok-skip-browser-warning": "true"
+                },
+                body: JSON.stringify({
+                    identifier: cardNumber,
+                    password: currentPassword
+                })
+            });
+
+            if (validationRes.status === 200 || validationRes.status === 201) {
+                const url = `${kohaAPI}/api/v1/patrons/${patronId}/password`;
+                const res = await fetch(url, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": basicAuth,
+                        "Accept": "application/json",
+                        "ngrok-skip-browser-warning": "true"
+                    },
+                    body: JSON.stringify({
+                        password: newPassword,
+                        password_2: confirmNewPassword
+                    })
+                });
+                if (res.ok) {
+                    handleToast("Password changed successfully.", "success");
+                    setCurrentPassword("");
+                    setNewPassword("");
+                    setConfirmNewPassword("");
+                    setTimeout(() => {
+                        setIsChangingPassword(false); // <-- End loading after minimum 2s
+                        setChangePasswordModal(false);
+                    }, Math.max(2000 - (Date.now() - startTime), 0));
+                    return;
+                } else {
+                    const errorData = await res.json();
+                    handleToast(errorData.message || "Failed to change password.", "error");
+                }
+            } else {
+                handleToast("Current password is incorrect.", "error");
+            }
+        } catch (err) {
+            console.error("Error validating/changing password:", err);
+            handleToast("An error occurred during password validation.", "error");
+        }
+        setTimeout(() => {
+            setIsChangingPassword(false); // <-- End loading after minimum 2s
+        }, Math.max(2000 - (Date.now() - startTime), 0));
+    }
+
     return (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }} className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 to-black text-white">
         {/* Header */}
@@ -508,10 +594,12 @@ export default function Profile() {
                                 <Settings className="w-4 h-4 text-white" />
                                 <button className="text-sm text-white/90 hover:text-white">Edit Profile</button>
                             </div>
-                            <div className="flex items-center gap-2 justify-center w-1/2 bg-white rounded-lg px-3 py-2 cursor-pointer hover:bg-gray-100 shadow-lg">
+                            <button 
+                                onClick={() => setChangePasswordModal(true)}
+                                className="flex items-center gap-2 justify-center w-1/2 bg-white select-none rounded-lg px-3 py-2 cursor-pointer hover:bg-gray-100 shadow-lg">
                                 <KeyRound className="w-4 h-4 text-black" />
-                                <button className="text-sm hover:text-black text-black cursor-pointer">Change Password</button>
-                            </div>
+                                <div className="text-sm hover:text-black text-black cursor-pointer">Change Password</div>
+                            </button>
                         </div>
                     </div>                    
                 </motion.div>
@@ -543,7 +631,7 @@ export default function Profile() {
                                 }}
                             >
                                 <LibraryBig className="w-5 h-5" />
-                                Account Information
+                                Account Credits
                             </button>
                         </div>
                     </SectionCard>
@@ -987,6 +1075,136 @@ export default function Profile() {
                     </div>
                 </div>
             )}
+
+            {/* Change Password Modal */}
+            {changePasswordModal && (
+                <div className="fixed h-screen bg-black/80 z-100 w-screen overflow-y-auto  ">
+                    <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0 " >
+                            
+                                
+                        <div className="relative transform overflow-hidden rounded-lg  text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg" >
+                            <div className="  bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10 border border-gray-800 rounded-lg rounded-b-none px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                                
+                                <div className="mt-4 p-3">
+                                    <h3 className="text-2xl font-bold text-orange-600 mb-4 flex items-center gap-2">
+                                        <KeyRound className="w-6 h-6 text-orange-500" />
+                                        Change Password
+                                    </h3>
+                                </div>
+                                {isChangingPassword ? (
+                                    <div className="text-center">
+                                        <div className="w-16 h-16 border-4 bosrder-dashed rounded-full animate-spin border-yellow-500 mx-auto"></div>
+                                        <h2 className="text-zinc-900 dark:text-white mt-4">Loading...</h2>
+                                        <p className="text-zinc-600 dark:text-zinc-400">
+                                            Changing your password, please wait.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        <p className="text-sm text-white/90 text-justify">
+                                            Please enter your old password below.
+                                        </p>
+                                        <div className=" w-full">
+                                            <input
+                                                type="password"
+                                                placeholder="Old Password"
+                                                className="w-full rounded-md border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
+                                                onChange={e => setCurrentPassword(e.target.value)}
+                                            />
+                                        </div>
+                                        <p className="text-sm text-white/90 text-justify">
+                                            Now, enter your new password below. Make sure it is strong and secure.
+                                        </p>
+                                        <div className=" w-full">
+                                            <input
+                                                type="password"
+                                                placeholder="New Password"
+                                                className="w-full rounded-md border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
+                                                value={newPassword}
+                                                onChange={e => {
+                                                    const value = e.target.value;
+                                                    setNewPassword(value);
+                                                    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{9,}$/;
+                                                    if (!passwordRegex.test(value)) {
+                                                        setNewPasswordError("Password must be >8 characters, include lowercase, uppercase, number, and special character.");
+                                                    } else {
+                                                        setNewPasswordError("");
+                                                    }
+                                                    // Also check confirm password match in real time
+                                                    if (!confirmNewPassword) {
+                                                        setConfirmNewPasswordError("");
+                                                    } else if (value !== confirmNewPassword) {
+                                                        setConfirmNewPasswordError("Passwords do not match.");
+                                                    } else {
+                                                        setConfirmNewPasswordError("");
+                                                    }
+                                                }}
+                                            />
+                                            <span className="text-[12px] text-red-600/90 px-3 text-right ">
+                                                {newPassword && newPasswordError ? newPasswordError : ""}
+                                            </span>
+                                        </div>
+                                        <p className="text-sm text-white/90 text-justify">
+                                            Finally, confirm your new password by entering it below.
+                                        </p>
+                                        <div className=" w-full">
+                                            <input
+                                                type="password"
+                                                placeholder="Confirm New Password"
+                                                className="w-full rounded-md border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
+                                                value={confirmNewPassword}
+                                                onChange={e => {
+                                                    const value = e.target.value;
+                                                    setConfirmNewPassword(value);
+                                                    if (!value) {
+                                                        setConfirmNewPasswordError("");
+                                                    } else if (newPassword && value !== newPassword) {
+                                                        setConfirmNewPasswordError("Passwords do not match.");
+                                                    } else {
+                                                        setConfirmNewPasswordError("");
+                                                    }
+                                                }}
+                                            />
+                                            <span className="text-[12px] text-red-600/90 px-3 text-right ">
+                                                {confirmNewPassword && confirmNewPasswordError ? confirmNewPasswordError : ""}
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="bg-gray-900 border-t border-gray-800 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                                <button
+                                    onClick={() => {
+                                        if (!isChangingPassword) handleChangePassword();
+                                    }}
+                                    className={`mb-3 cursor-pointer inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto ${isChangingPassword ? "opacity-50 cursor-not-allowed" : ""}`}
+                                    disabled={isChangingPassword}
+                                >
+                                    Change Password
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        if (!isChangingPassword) {
+                                            setChangePasswordModal(false);
+                                            setNewPassword("");
+                                            setConfirmNewPassword("");
+                                            setNewPasswordError("");
+                                            setConfirmNewPasswordError("");
+                                        }
+                                    }}
+                                    className={`mb-3 cursor-pointer inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-black shadow-sm hover:bg-white-500 sm:ml-3 sm:w-auto ${isChangingPassword ? "opacity-50 cursor-not-allowed" : ""}`}
+                                    type="button"
+                                    disabled={isChangingPassword}
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            
             {/* TOAST CONTAINER */}
             <ToastContainer/>
         </motion.div>
