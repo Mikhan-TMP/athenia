@@ -48,18 +48,16 @@ export default function ChatSidebar({
         if (storedCardNumber) {
             const fetchChatHistory = async () => {
                 try {
-                    const response = await axios.get(`${backendUrl}/api/chat/get-chat-history?cardnumber=${storedCardNumber}`);
-                    // Normalize response
-                    const normalized = (Array.isArray(response.data) ? response.data : [response.data]).map((item: any) => ({
-                        sessionId: item.sessionID || item.sessionId,
-                        cardNumber: item.cardnumber || item.cardNumber,
-                        messages: item.history || item.messages,
-                        chatName: item.name || item.chatName || "Chat Session",
-                        startTime: item.history?.[0]?.timestamp || item.startTime,
-                        ...item,
-                    }));
-                    setChatHistories(normalized);
-                    console.log("Chat history fetched:", normalized);
+                    console.log("backendUrl:", backendUrl); // Debug line
+                    const response = await fetch(`${backendUrl}/api/chat/get-chat-history?cardnumber=${storedCardNumber}`, {
+                        method: "GET",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Accept": "application/json",
+                        },
+                    });
+                    const data = await response.json();
+                    console.log("Fetched chat history:", data); // Debug line
                 } catch (error) {
                     console.error("Failed to fetch chat history:", error);
                 }

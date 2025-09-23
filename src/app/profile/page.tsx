@@ -1,5 +1,5 @@
 'use client';
-import { CircleAlert, BookAIcon, BookOpen, ArrowLeft, Pencil, Book, BookAlert, BookOpenText, CircleAlertIcon, InfoIcon, Mail, Calendar, CardSim, IdCard, IdCardIcon, UserX2Icon, UserCheckIcon, UserCircle, UserCog2, Calendar1Icon, Building2Icon, Contact, UserRound, Settings2, Settings, KeyIcon, Key, KeyRound, LibraryBig } from "lucide-react";
+import { CircleAlert, BookAIcon, BookOpen, ArrowLeft, Pencil, Book, BookAlert, BookOpenText, CircleAlertIcon, InfoIcon, Mail, Calendar, CardSim, IdCard, IdCardIcon, UserX2Icon, UserCheckIcon, UserCircle, UserCog2, Calendar1Icon, Building2Icon, Contact, UserRound, Settings2, Settings, KeyIcon, Key, KeyRound, LibraryBig, PenSquare, ArrowBigLeft, ArrowBigRight, Loader2Icon, Save } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { ToastContainer, toast } from 'react-toastify';
@@ -37,13 +37,61 @@ export default function Profile() {
     const [renewModal, setRenewModal] = useState(false);
     const [borrowedHistoryModal, setBorrowedHistoryModal] = useState(false);
     const [accountInformationModal, setAccountInformationModal] = useState(false);
-    const [changePasswordModal, setChangePasswordModal] = useState(true);
-    const [isChangingPassword, setIsChangingPassword] = useState(false); // <-- Add this state
+    const [changePasswordModal, setChangePasswordModal] = useState(false);
+    const [isChangingPassword, setIsChangingPassword] = useState(false); 
     const [currentPassword, setCurrentPassword] = useState("");
     const [newPassword, setNewPassword] = useState("");
     const [confirmNewPassword, setConfirmNewPassword] = useState("");
     const [newPasswordError, setNewPasswordError] = useState("");
     const [confirmNewPasswordError, setConfirmNewPasswordError] = useState("");
+    const [editProfileModal, setEditProfileModal] = useState(false);
+    const [step, setStep] = useState(1);
+
+    //Edit Information
+    const [editPreferredName, setEditPreferredName] = useState("");
+    const [editFirstName, setEditFirstName] = useState("");
+    const [editLastName, setEditLastName] = useState("");
+    const [editDateOfBirth, setEditDateOfBirth] = useState("");
+    const [editGender, setEditGender] = useState("");
+
+    // step2
+    const [editEmail, setEditEmail] = useState("");
+    const [editPhone, setEditPhone] = useState("");
+    const [editSecondaryEmail, setEditSecondaryEmail] = useState("");
+    const [editMobile, setEditMobile] = useState("");
+    const [editSecondaryPhone, setEditSecondaryPhone] = useState("");
+
+    //step 3
+    const [editAddress, setEditAddress] = useState("");
+    const [editAddress2, setEditAddress2] = useState("");
+    const [editCity, setEditCity] = useState("");
+    const [editState, setEditState] = useState("");
+    const [editZipcode, setEditZipcode] = useState("");
+    const [editCountry, setEditCountry] = useState("");
+
+    const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+
+    useEffect(() => {
+    if (profile) {
+        setEditPreferredName(profile.preferred_name ?? "");
+        setEditFirstName(profile.firstname ?? "");
+        setEditLastName(profile.surname ?? "");
+        setEditDateOfBirth(profile.date_of_birth ?? "");
+        setEditGender(profile.gender ?? "");
+        setEditEmail(profile.email ?? "");
+        setEditPhone(profile.phone ?? "");
+        setEditSecondaryEmail(profile.secondary_email ?? "");
+        setEditMobile(profile.mobile ?? "");
+        setEditSecondaryPhone(profile.secondary_phone ?? "");
+        setEditAddress(profile.address ?? "");
+        setEditAddress2(profile.address2 ?? "");
+        setEditCity(profile.city ?? "");
+        setEditState(profile.state ?? "");
+        setEditZipcode(profile.zipcode ?? "");
+        setEditCountry(profile.country ?? "");
+    }
+    }, [profile]);
+
 
     // renewal
     const [renew, setRenew] = useState<any>(null);
@@ -344,7 +392,7 @@ export default function Profile() {
 
             if (res.ok) {
                 const data = await res.json();
-                setCheckoutHistory(data); // <-- Populate the modal with history data
+                setCheckoutHistory(data); 
                 // console.log("Checkout History:", data);
             } else {
                 console.error("Failed to fetch checkout history:", res.statusText);
@@ -378,6 +426,90 @@ export default function Profile() {
             }
         }catch (err) {
             console.error("Error fetching account information:", err);
+        }
+    }
+
+    const handleUpdateProfile = async () => {
+        setIsUpdatingProfile(true);
+        if (!patronId ) {
+            handleToast("Patron ID is required.", "error");
+            setIsUpdatingProfile(false);
+            return;
+        }
+        if (!cardNumber ) {
+            handleToast("Card number is required.", "error");
+            setIsUpdatingProfile(false);
+            return;
+        }
+        if (!profile) {
+            handleToast("Profile information is required.", "error");
+            setIsUpdatingProfile(false);
+            return;
+        }
+        if (editLastName === null || editLastName.trim() === "") {
+            handleToast("Last name is required.", "error");
+            setIsUpdatingProfile(false);
+            return;
+        }
+
+        try {
+            const url = `${kohaAPI}/api/v1/patrons/${patronId}`;
+            const basicAuth = `Basic ${btoa(unescape(encodeURIComponent(`${kohaUsername}:${kohaPassword}`)))}`;
+
+            // Only include fields that are not null/empty/undefined
+            const updatedFields: any = {};
+            updatedFields.patron_id = patronId; // Always include patron_id
+            updatedFields.cardnumber = cardNumber; // Always include cardnumber
+            // updatedFields.extended_attributes = {
+            //     extended_attribute_id: 0,
+            //     type: "patron",
+            //     value: patronId
+            // }
+            updatedFields.library_id = profile.library_id; // Always include library_id
+            updatedFields.category_id = profile.category_id; // Always include category_id
+            if (editPreferredName) updatedFields.preferred_name = editPreferredName;
+            if (editFirstName) updatedFields.firstname = editFirstName;
+            if (editLastName) updatedFields.surname = editLastName;
+            if (editDateOfBirth) updatedFields.date_of_birth = editDateOfBirth;
+            if (editGender) updatedFields.gender = editGender;
+            if (editEmail) updatedFields.email = editEmail;
+            if (editPhone) updatedFields.phone = editPhone;
+            if (editSecondaryEmail) updatedFields.secondary_email = editSecondaryEmail;
+            if (editMobile) updatedFields.mobile = editMobile;
+            if (editSecondaryPhone) updatedFields.secondary_phone = editSecondaryPhone;
+            if (editAddress) updatedFields.address = editAddress;
+            if (editAddress2) updatedFields.address2 = editAddress2;
+            if (editCity) updatedFields.city = editCity;
+            if (editState) updatedFields.state = editState;
+            if (editZipcode) updatedFields.postal_code = editZipcode;
+            if (editCountry) updatedFields.country = editCountry;
+
+            console.log("Updating with fields:", updatedFields);
+            const res = await fetch(url, {
+                method: "PUT",
+                headers: {
+                    "Authorization": basicAuth,
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                    "ngrok-skip-browser-warning": "true"
+                },
+                body: JSON.stringify(updatedFields)
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                handleToast("Profile updated successfully.", "success");
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            } else {
+                handleToast("Failed to update profile. Please try again.", "error");
+                console.error("Failed to update profile:", res.statusText);
+            }
+        } catch (err) {
+            console.error("Error updating profile:", err);
+        } finally {
+            setIsUpdatingProfile(false);
         }
     }
 
@@ -459,7 +591,6 @@ export default function Profile() {
             setIsChangingPassword(false); // <-- End loading after minimum 2s
         }, Math.max(2000 - (Date.now() - startTime), 0));
     }
-
     return (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }} className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 to-black text-white">
         {/* Header */}
@@ -470,10 +601,6 @@ export default function Profile() {
                     </button>
                 </div>
                 <div>
-                {/* <button className="cursor-pointer flex items-center gap-2 text-sm bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-lg shadow transition">
-                    <Pencil className="w-4 h-4" />
-                    Edit Profile
-                </button> */}
                 </div>
             </motion.div>
 
@@ -484,10 +611,10 @@ export default function Profile() {
                 <motion.div initial={{ x: -60, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ duration: 0.6, ease: "easeOut" }} className="w-full max-w-xl space-y-6" >
                     {/* Profile Card */}
                     <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-slate-800 via-slate-900 to-slate-800 shadow-xl p-6 space-y-5">
-                        <div className="flex w-full gap-2 items-center space-y-3">
+                        <div className="flex flex-col sm:flex-row w-full gap-2 items-center space-y-3">
                             <Image src="/default-user.webp" alt="User Profile" width={112} height={112} className="w-28 h-28 rounded-full ring-2 ring-orange-400 shadow-md object-cover hover:scale-105 transition-transform duration-200 cursor-pointer" />
-                            <div className="">
-                                <h2 className="text-3xl font-bold text-orange-400">{profile.preferred_name ?? "N/A"} {profile.surname ?? ""}</h2>
+                            <div className="flex flex-col justify-center items-center sm:items-start space-y-1">
+                                <h2 className="text-3xl font-bold text-orange-400">{profile.firstname ?? "N/A"} {profile.surname ?? ""}</h2>
                                 <div className="flex items-center">
                                     <Mail className="w-4 h-4 inline-block text-white/60 mr-1" />
                                     <p className="text-sm text-gray-300">{profile.email ?? "N/A"}</p>
@@ -499,17 +626,17 @@ export default function Profile() {
                             </div>
                         </div>
                         <div className="w-full flex flex-wrap items-center justify-center gap-5 select-none sm:flex-row sm:justify-between sm:flex-nowrap">
-                            <div className="p-5 rounded-2xl w-50 bg-white/10 flex flex-col justify-center items-center cursor-pointer hover:bg-white/20 shadow-md">
+                            <div className="p-5 rounded-2xl w-80 sm:w-70 md:w-50 bg-white/10 flex flex-col justify-center items-center cursor-pointer hover:bg-white/20 shadow-md">
                                 <Calendar className="w-6 h-6 mb-1" />
                                 <span className="text-green-400 text-[11px]">Member Since</span>
                                 <p className="text-lg font-bold text-gray-300">{profile.date_enrolled ?? "N/A"}</p>
                             </div>
-                            <div className="p-5 rounded-2xl w-50 bg-white/30 flex flex-col justify-center items-center cursor-pointer hover:bg-white/40 shadow-md">
+                            <div className="p-5 rounded-2xl w-80 sm:w-70 md:w-50 bg-white/30 flex flex-col justify-center items-center cursor-pointer hover:bg-white/40 shadow-md">
                                 <IdCard className="w-6 h-6 mb-1" />
                                 <span className="text-green-400 text-[11px]">Card Number</span>
                                 <p className="text-lg font-bold text-gray-300">{profile.cardnumber ?? "N/A"}</p>
                             </div>
-                            <div className="p-5 rounded-2xl w-50 bg-white/10 flex flex-col justify-center items-center cursor-pointer hover:bg-white/20 shadow-md">
+                            <div className="p-5 rounded-2xl w-80 sm:w-70 md:w-50 bg-white/10 flex flex-col justify-center items-center cursor-pointer hover:bg-white/20 shadow-md">
                                 <UserCheckIcon className="w-6 h-6 mb-1" />
                                 <span className="text-green-400 text-[11px]">Patron ID</span>
                                 <p className="text-lg font-bold text-gray-300">{profile.patron_id ?? "N/A"}</p>
@@ -578,7 +705,15 @@ export default function Profile() {
                                     <UserRound className="w-5 h-5 text-white/60 mr-2" />
                                     <div className="flex flex-col w-full">
                                         <span className="text-[12px]">Gender</span>
-                                        <span className="text-lg font-bold">{profile.gender ?? "N/A"}</span>
+                                        <span className="text-lg font-bold">
+                                            {profile.gender == null
+                                                ? "N/A"
+                                                : (profile.gender === "M" || profile.gender === "m")
+                                                    ? "Male"
+                                                    : (profile.gender === "F" || profile.gender === "f")
+                                                        ? "Female"
+                                                        : "Other"}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -591,8 +726,12 @@ export default function Profile() {
                         <h3 className="text-lg font-semibold mb-2">Profile Actions</h3>
                         <div className="flex justify-between gap-2 ">
                             <div className="flex items-center gap-2 justify-center w-1/2 bg-orange-600 rounded-lg px-3 py-2 cursor-pointer hover:bg-orange-500 shadow-lg">
-                                <Settings className="w-4 h-4 text-white" />
-                                <button className="text-sm text-white/90 hover:text-white">Edit Profile</button>
+                                <button 
+                                    onClick={() => setEditProfileModal(true)}
+                                    className="flex items-center gap-2 justify-center w-full">
+                                    <Settings className="w-4 h-4 text-white" />
+                                    <div className="text-sm hover:text-white text-white cursor-pointer">Edit Profile</div>
+                                    </button>
                             </div>
                             <button 
                                 onClick={() => setChangePasswordModal(true)}
@@ -1204,7 +1343,212 @@ export default function Profile() {
                     </div>
                 </div>
             )}
-            
+
+            {/* Edit Profile Modal */}
+            {editProfileModal && (
+            <div className="fixed h-screen bg-black/80 z-100 w-screen overflow-y-auto">
+                <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                <div className="relative transform overflow-hidden rounded-lg text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
+                    <div className="bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10 border border-gray-800 rounded-lg rounded-b-none px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                    
+                    {/* Header */}
+                    <div className="mt-4 p-3">
+                        <h3 className="text-2xl font-bold text-orange-600 mb-4 flex items-center gap-2">
+                        <PenSquare className="w-6 h-6 text-orange-500" />
+                            Edit Profile
+                        </h3>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div>
+                        <div className="w-full bg-gray-700 rounded-full h-2.5 mb-4">
+                        <div
+                            className="bg-orange-500 h-2.5 rounded-full transition-all duration-300"
+                            style={{ width: `${(step / 3) * 100}%` }}
+                        ></div>
+                        </div>
+                        <div className="flex justify-between">
+                        <span className="text-xs text-gray-500">Step {step} of 3</span>
+                        <span className="text-xs text-gray-500">
+                            {Math.round((step / 3) * 100)}%
+                        </span>
+                        </div>
+                    </div>
+
+                    {/* Steps Content */}
+                    <div className="space-y-4 mt-6">
+                        {step === 1 && (
+                        <>
+                            <h4 className="text-lg font-semibold text-center text-white">Basic Info</h4>
+                            <label className="text-[12px]">First Name:</label>
+                            <input
+                                type="text"
+                                placeholder="First Name"
+                                className="inputStyle"
+                                onChange={e => setEditFirstName(e.target.value)}
+                                value={editFirstName}
+                            />
+                            <label className="text-[12px]">Last Name:</label>
+                            <input
+                                type="text"
+                                placeholder="Last Name"
+                                className="inputStyle"
+                                onChange={e => setEditLastName(e.target.value)}
+                                value={editLastName}
+                            />
+                            <label className="text-[12px]">Preferred Name:</label>
+                            <input
+                                type="text"
+                                placeholder="Preferred Name"
+                                className="inputStyle"
+                                value={editPreferredName}
+                                onChange={e => setEditPreferredName(e.target.value)}
+                            />
+                            <label className="text-[12px]">Date of Birth:</label>
+                            <input
+                                type="date"
+                                placeholder="Date of Birth"
+                                className="inputStyle"
+                                onChange={e => setEditDateOfBirth(e.target.value)}
+                                value={editDateOfBirth}
+                            />
+                            <label className="text-[12px]">Gender:</label>
+                            <select
+                                className="inputStyle"
+                                value={editGender}
+                                onChange={e => setEditGender(e.target.value)}
+                            >
+                                <option value="">Select Gender</option>
+                                <option value="M">Male</option>
+                                <option value="F">Female</option>
+                                <option value="O">Other</option>
+                            </select>
+                        </>
+                        )}
+
+                        {step === 2 && (
+                        <>
+                            <h4 className="text-lg font-semibold text-center text-white">Contact Info</h4>
+
+                            <label className="text-[12px]">Email:</label>
+                            <input
+                                type="email" placeholder="Email" className="inputStyle"
+                                onChange={e => setEditEmail(e.target.value)}
+                                value={editEmail}
+                            />
+                            <label className="text-[12px]">Secondary Email:</label>
+                            <input
+                                type="email" placeholder="Secondary Email" className="inputStyle"
+                                onChange={e => setEditSecondaryEmail(e.target.value)}
+                                value={editSecondaryEmail}
+                            />
+                            <label className="text-[12px]">Phone:</label>
+                            <input
+                                type="text" placeholder="Phone" className="inputStyle"
+                                onChange={e => setEditPhone(e.target.value)}
+                                value={editPhone}
+                            />
+                            <label className="text-[12px]">Mobile:</label>
+                            <input
+                                type="text" placeholder="Mobile" className="inputStyle"
+                                onChange={e => setEditMobile(e.target.value)}
+                                value={editMobile}
+                            />
+                            <label className="text-[12px]">Secondary Phone:</label>
+                            <input
+                                type="text" placeholder="Secondary Phone" className="inputStyle"
+                                onChange={e => setEditSecondaryPhone(e.target.value)}
+                                value={editSecondaryPhone}
+                            />
+                        </>
+                        )}
+
+                        {step === 3 && (
+                        <>
+                            <h4 className="text-lg font-semibold text-center text-white">Address</h4>
+                            <label className="text-[12px]">Address Line 1:</label>
+                            <input 
+                                type="text" placeholder="Address Line 1" className="inputStyle" 
+                                onChange={e => setEditAddress(e.target.value)}
+                                value={editAddress}
+                            />
+                            <label className="text-[12px]">Address Line 2:</label>
+                            <input 
+                                type="text" placeholder="Address Line 2" className="inputStyle" 
+                                onChange={e => setEditAddress2(e.target.value)}
+                                value={editAddress2}
+                            />
+                            <label className="text-[12px]">City:</label>
+                            <input 
+                                type="text" placeholder="City" className="inputStyle" 
+                                onChange={e => setEditCity(e.target.value)}
+                                value={editCity}
+                            />
+                            <label className="text-[12px]">State:</label>
+                            <input 
+                                type="text" placeholder="State" className="inputStyle" 
+                                onChange={e => setEditState(e.target.value)}
+                                value={editState}
+                            />
+                            <label className="text-[12px]">Postal Code:</label>
+                            <input 
+                                type="text" placeholder="Postal Code" className="inputStyle" 
+                                onChange={e => setEditZipcode(e.target.value)}
+                                value={editZipcode}
+                            />
+                            <label className="text-[12px]">Country:</label>
+                            <input 
+                                type="text" placeholder="Country" className="inputStyle" 
+                                onChange={e => setEditCountry(e.target.value)}
+                                value={editCountry}
+                            />
+                        </>
+                        )}
+
+                        {/* Navigation */}
+                        <div className="flex justify-between mt-6">
+                        <button
+                            onClick={() => setStep(prev => Math.max(prev - 1, 1))}
+                            className="cursor-pointer inline-flex items-center px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium rounded-md"
+                            disabled={step === 1}
+                        >
+                            <ArrowBigLeft className="w-4 h-4" />
+                        </button>
+                        {step < 3 ? (
+                            <button
+                                onClick={() => setStep(prev => Math.min(prev + 1, 3))}
+                                className="cursor-pointer inline-flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md"
+                                >
+                                <ArrowBigRight className="w-4 h-4" />
+                            </button>
+                        ) : (
+                            <button
+                                disabled={isUpdatingProfile}
+                                onClick={() => handleUpdateProfile()}
+                                className="cursor-pointer inline-flex items-center px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md"
+                                >
+                                {isUpdatingProfile ? <Loader2Icon className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4" />}
+                            </button>
+                        )}
+                        </div>
+                    </div>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="bg-gray-900 border-t border-gray-800 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                    <button
+                        onClick={() => setEditProfileModal(false)}
+                        className="mb-3 cursor-pointer inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-black shadow-sm hover:bg-gray-200 sm:ml-3 sm:w-auto"
+                        type="button"
+                    >
+                        Close
+                    </button>
+                    </div>
+                </div>
+                </div>
+            </div>
+            )}
+
             {/* TOAST CONTAINER */}
             <ToastContainer/>
         </motion.div>
@@ -1286,93 +1630,93 @@ export default function Profile() {
         </div>
     );
 
-const Modal = ({ book, onClose }: { book: any; onClose: () => void }) => (
-    <div className="fixed h-screen bg-black/80 z-100 w-screen overflow-y-auto  ">
-        <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0 " >
-            <div className="relative transform overflow-hidden rounded-lg  text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg" >
-            <div className="  bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10 border border-gray-800 rounded-lg rounded-b-none px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
-                <div className="mt-4 p-3">
-                    <div className="flex flex-col ">
-                        <h3 className="text-2xl font-bold text-orange-400 mb-4 flex items-center gap-2">
-                            <BookOpenText className="w-6 h-6 text-orange-500" />
-                            {book?.title ?? "Unknown"}
-                        </h3>
-                        <h5 className="text-md pl-5 text-white/80">
-                            by: {book?.author ?? "Unknown"}
-                        </h5>
-                        <h5 className="text-sm pl-5 text-white/60">
-                            {book?.publisher ?? "Unknown"}
-                        </h5>
-                        <h5 className="text-[10px] pl-5 text-white/60">
-                            {book?.abstract ?? "No description available"}
-                        </h5>
-                    </div>
-
-                    {book?.hold && (
-                        <div className="max-h-120 p-3 overflow-y-auto grid grid-cols-1 gap-4 cursor-pointer ">
-                                <div
-                                    className="rounded-md bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-20 border border-gray-100 rounded-2xl p-5 shadow-lg hover:shadow-xl transition-shadow duration-200"
-                                >
-                                    <div className="flex flex-col justify-between items-center gap-2 mb-2">
-                                        <div className="flex justify-between items-center  w-full ">
-                                            <span className="font-semibold text-orange-500">Hold Date:</span>
-                                            <span className="text-green-500">{book.hold.hold_date ?? "Unknown"}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center  w-full">
-                                            <span className="font-semibold text-orange-5efsddsdasda00">Queue #: </span>
-                                            <span className="text-red-600">{book.hold.priority ?? "Unknown"}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center  w-full ">
-                                            <span className="font-semibold text-orange-300">Status:</span>
-                                            <span className="text-blue">{book.hold.status ?? "Pending"}</span>
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-col gap-2 text-sm">
-                                        <div className="flex justify-between items-center  w-full">
-                                            <span className="font-medium text-orange-300">Patron ID:</span>
-                                            <span className="text-gray-200">{book.hold.patron_id ?? "Unknown"}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center  w-full ">
-                                            <span className="font-medium text-orange-300">Pickup Library:</span>
-                                            <span className="text-gray-200">{book.hold.pickup_library_id ?? "Unknown"}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center  w-full ">
-                                            <span className="font-medium text-orange-300">Expiration Date:</span>
-                                            <span className="text-gray-200">{book.hold.expiration_date ?? "N/A"}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center  w-full ">
-                                            <span className="font-medium text-orange-300">Item ID:</span>
-                                            <span className="text-gray-200">{book.hold.item_id ?? "N/A"}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center  w-full ">
-                                            <span className="font-medium text-orange-300">Item level:</span>
-                                            <span className="text-gray-200">{book.hold.item_level ?? "Unknown"}</span>
-                                        </div>
-                                    </div>
-                                    <div className="flex justify-end">
-                                        <span className="inline-block px-3 py-1 rounded-full bg-orange-100 text-orange-600 text-xs font-semibold">
-                                            {book.hold.hold_id}
-                                        </span>
-                                    </div>
-                                </div>
+    const Modal = ({ book, onClose }: { book: any; onClose: () => void }) => (
+        <div className="fixed h-screen bg-black/80 z-100 w-screen overflow-y-auto  ">
+            <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0 " >
+                <div className="relative transform overflow-hidden rounded-lg  text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg" >
+                <div className="  bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10 border border-gray-800 rounded-lg rounded-b-none px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                    <div className="mt-4 p-3">
+                        <div className="flex flex-col ">
+                            <h3 className="text-2xl font-bold text-orange-400 mb-4 flex items-center gap-2">
+                                <BookOpenText className="w-6 h-6 text-orange-500" />
+                                {book?.title ?? "Unknown"}
+                            </h3>
+                            <h5 className="text-md pl-5 text-white/80">
+                                by: {book?.author ?? "Unknown"}
+                            </h5>
+                            <h5 className="text-sm pl-5 text-white/60">
+                                {book?.publisher ?? "Unknown"}
+                            </h5>
+                            <h5 className="text-[10px] pl-5 text-white/60">
+                                {book?.abstract ?? "No description available"}
+                            </h5>
                         </div>
-                    )}
 
+                        {book?.hold && (
+                            <div className="max-h-120 p-3 overflow-y-auto grid grid-cols-1 gap-4 cursor-pointer ">
+                                    <div
+                                        className="rounded-md bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-20 border border-gray-100 rounded-2xl p-5 shadow-lg hover:shadow-xl transition-shadow duration-200"
+                                    >
+                                        <div className="flex flex-col justify-between items-center gap-2 mb-2">
+                                            <div className="flex justify-between items-center  w-full ">
+                                                <span className="font-semibold text-orange-500">Hold Date:</span>
+                                                <span className="text-green-500">{book.hold.hold_date ?? "Unknown"}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center  w-full">
+                                                <span className="font-semibold text-orange-5efsddsdasda00">Queue #: </span>
+                                                <span className="text-red-600">{book.hold.priority ?? "Unknown"}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center  w-full ">
+                                                <span className="font-semibold text-orange-300">Status:</span>
+                                                <span className="text-blue">{book.hold.status ?? "Pending"}</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col gap-2 text-sm">
+                                            <div className="flex justify-between items-center  w-full">
+                                                <span className="font-medium text-orange-300">Patron ID:</span>
+                                                <span className="text-gray-200">{book.hold.patron_id ?? "Unknown"}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center  w-full ">
+                                                <span className="font-medium text-orange-300">Pickup Library:</span>
+                                                <span className="text-gray-200">{book.hold.pickup_library_id ?? "Unknown"}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center  w-full ">
+                                                <span className="font-medium text-orange-300">Expiration Date:</span>
+                                                <span className="text-gray-200">{book.hold.expiration_date ?? "N/A"}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center  w-full ">
+                                                <span className="font-medium text-orange-300">Item ID:</span>
+                                                <span className="text-gray-200">{book.hold.item_id ?? "N/A"}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center  w-full ">
+                                                <span className="font-medium text-orange-300">Item level:</span>
+                                                <span className="text-gray-200">{book.hold.item_level ?? "Unknown"}</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex justify-end">
+                                            <span className="inline-block px-3 py-1 rounded-full bg-orange-100 text-orange-600 text-xs font-semibold">
+                                                {book.hold.hold_id}
+                                            </span>
+                                        </div>
+                                    </div>
+                            </div>
+                        )}
+
+                    </div>
+                </div>
+                <div className="bg-gray-900 border-t border-gray-800 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                    <button
+                        onClick={onClose}
+                        className="cursor-pointer inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto"
+                        type="button"
+                        >
+                        Close
+                    </button>
+                </div>
                 </div>
             </div>
-            <div className="bg-gray-900 border-t border-gray-800 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
-                <button
-                    onClick={onClose}
-                    className="cursor-pointer inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto"
-                    type="button"
-                    >
-                    Close
-                </button>
-            </div>
-            </div>
         </div>
-    </div>
-);
+    );
 
 // const Modal = ({ book, onClose }: { book: any; onClose: () => void }) => (
 //     <div className="fixed px-5 inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
