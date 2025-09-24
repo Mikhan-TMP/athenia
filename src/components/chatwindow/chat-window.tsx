@@ -10,6 +10,9 @@ import Tooltip from "@mui/material/Tooltip"
 import IconButton from "@mui/material/IconButton"
 import InfoIcon from "@mui/icons-material/Info"
 import { MicExternalOff } from "@mui/icons-material";
+import i18n from "@/i18n";
+import { useTranslation } from "react-i18next";
+import { I18nextProvider } from "react-i18next"; 
 
 const books = [
     {
@@ -32,6 +35,8 @@ type ChatWindowProps = {
 
 
 export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessages = [], sessionId,}: ChatWindowProps) {
+    //Static Translation
+    const { t } = useTranslation();
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
     const booksPerPage = 1;
@@ -136,19 +141,19 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
 
     const handleReserve = async () => {
         if (!selectedLibrary){
-            handleToast("Please select a pickup library.", "error");
+            handleToast(`${t("please_select_a_pickup_library")}`, "error");
             return
         }
         // if (holdDate === ""){
-        //     handleToast("Please select a hold date.", "error");
+        //     handleToast(`${t("please_select_a_hold_date")}`, "error");
         //     return
         // }
         if (selectedItem.length === 0){
-            handleToast("No available items to reserve.", "error");
+            handleToast(`${t("no_available_items_to_reserve")}`, "error");
             return
         }
         if (localStorage.getItem("patron_id") === null){
-            handleToast("Please log in to reserve a book.", "error");
+            handleToast(`${t("please_login_to_reserve")}`, "error");
             return
         }
         // console.log(holdDate); 
@@ -189,7 +194,7 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
 
                 if (response.status === 200 || response.status === 201) {
                     const receipt = await response.json();
-                    handleToast("Reservation successful!", "success");
+                    handleToast(`${t("reservation_successful")}`, "success");
                     setReserveModalOpen(false);
                     setSelectedLibrary("");
                     setAvailableCount(0);
@@ -200,20 +205,20 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
                 } else if (response.status === 403) {
                     try {
                         const errorJson = await response.json();
-                        let reason = errorJson?.error || "Reservation failed due to restriction.";
+                        let reason = errorJson?.error || `${t("reservation_failed_due_to_restriction")}`;
                         if (reason.includes("itemAlreadyOnHold")){
-                            reason = "You already have this item on hold.";
+                            reason = `${t("you_already_have_this_item_on_hold")}`;
                         }
                         else if (reason.includes("tooManyHoldsForThisRecord")){
-                            reason = "You are not allowed to have two or more holds for this record.";
+                            reason = `${t("you_are_not_allowed_to_have_two_or_more_holds_for_this_record")}`;
                         }
-                        handleToast(`Item ${item.item_id} could not be reserved: ${reason}`, "warning");
+                        handleToast(`${t("item")} ${item.item_id} ${t("could_not_be_reserved")}: ${reason}`, "warning");
                         continue;
                     } catch (parseErr) {
-                        handleToast(`Item ${item.item_id} could not be reserved (403 Forbidden).`, "warning");
+                        handleToast(`${t("item")} ${item.item_id} ${t("could_not_be_reserved")} (403 Forbidden).`, "warning");
                     }
                 } else {
-                    handleToast(`Item ${item.item_id} could not be reserved (status: ${response.status}).`, "warning");
+                    handleToast(`${t("item")} ${item.item_id} ${t("could_not_be_reserved")} (status: ${response.status}).`, "warning");
                     continue; 
                 }
             } catch (error) {
@@ -248,7 +253,7 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
         const controller = new AbortController();
         const timeoutId = setTimeout(() => {
             controller.abort();
-            handleToast("Request timed out. Please try again.", "error");
+            handleToast(`${t("request_timed_out_please_try_again")}`, "error");
             console.log("Timed out, aborting request.");
         }, 30000);
         try {
@@ -285,7 +290,7 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
                     ...prev,
                     { 
                         type: "ai", 
-                        message: data.answer || "Sorry, I couldn't find an answer to your question." }
+                        message: data.answer || `${t("sorry_i_couldnt_find_an_answer_to_your_question")}` }
                 ]);
             }else{
             if (["booksearch", "recommendation", "lookup", "specific_book_search"].includes(responseType)) {
@@ -303,7 +308,7 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
                     ...prev,
                     {
                         type: "ai",
-                        message: "Sorry, I couldn't process your request."
+                        message: `${t("sorry_i_couldnt_process_your_request_right_now")}`
                     }
                 ]);
             }
@@ -313,7 +318,7 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
             // console.error(err);
             setChatHistory((prev) => [
             ...prev,
-            { type: "ai", message: "Network error. Please try again." }
+            { type: "ai", message: `${t("network_error_please_try_again")}` }
             ]);
         }
         setLoading(false);
@@ -341,13 +346,13 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
             // console.log("Book details response:", data);
 
             if (!data) {
-                setModalError("No details found for this book.");
+                setModalError(`${t("no_details_found_for_this_book")}`);
                 setModalData(null);
             } else {
                 setModalData(data); 
             }
         } catch (err: any) {
-            setModalError("Could not load book details.");
+            setModalError(`${t("could_not_load_book_details")}`);
             setModalData(null);
         }
         setModalLoading(false);
@@ -390,7 +395,7 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
 
     const handleProfile = () => {
         if (!localStorage.getItem('cardNumber') || !localStorage.getItem('patron_id')) {
-            handleToast("Not logged in. Please login first.", "error");
+            handleToast(`${t("not_logged_in_please_login_to_access_full_features")}`, "error");
         } else {
             setIsLoadingOpen(true);
             setTimeout(() => {
@@ -402,6 +407,13 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
     const handleLogOut = () => {
         setLogoutModalOpen(true);
     }
+
+    useEffect(() => {
+        const savedLang = localStorage.getItem("appLanguage");
+        if (savedLang && savedLang !== i18n.language) {
+            i18n.changeLanguage(savedLang);
+        }
+    }, []);
 
     // SCROLL
     useEffect(() => {
@@ -544,17 +556,19 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
         setVoiceError(null);
         setVoiceTranscript("");
         if (!('webkitSpeechRecognition' in window)) {
-            handleToast("Speech recognition not supported in this browser.", "error");
+            handleToast(t("speech_recognition_not_supported_in_this_browser"), "error");
             return;
         }
         const SpeechRecognition = (window as any).webkitSpeechRecognition;
         const recognition = new SpeechRecognition();
-        recognition.lang = 'en-US';
+        // Set recognition language based on localStorage/appLanguage
+        const lang = localStorage.getItem("appLanguage") === "ja" ? "ja-JP" : "en-US";
+        recognition.lang = lang;
         recognition.interimResults = false;
         recognition.maxAlternatives = 1;
         recognition.onstart = () => setIsListening(true);
         recognition.onerror = (event: any) => {
-            handleToast(event.error || "Voice recognition error.", "error");
+            handleToast(event.error || `${t("voice_recognition_error")}`, "error");
         };
         recognition.onend = () => setIsListening(false);
         recognition.onresult = (event: any) => {
@@ -595,8 +609,8 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
             const responseType = data?.response?.[0]?.type;
 
             if (!data.response || data.response.length === 0) {
-                setVoiceAnswer({ type: "ai", message: data.answer || "Sorry, I couldn't find an answer to your question." });
-                speakText(data.answer || "Sorry, I couldn't find an answer to your question.");
+                setVoiceAnswer({ type: "ai", message: data.answer || `${t("sorry_i_couldnt_find_an_answer_to_your_question")}` });
+                speakText(data.answer || t("sorry_i_couldnt_find_an_answer_to_your_question"));
             } else if (["booksearch", "recommendation", "lookup", "specific_book_search"].includes(responseType)) {
                 setVoiceAnswer({
                     type: "booksearch",
@@ -640,908 +654,915 @@ export default function ChatWindow({ onSidebarToggle, sidebarOpen, externalMessa
     const [useAltBackend, setUseAltBackend] = useState(false);
 
     const backendUrl = useAltBackend
-        ? "http://192.168.0.117:6969"
+        ? "http://192.168.0.123:8080"
         : process.env.NEXT_PUBLIC_BACKEND_URL || ""; 
 
 
     return (
-        <div className="flex shrink-0 items-center flex-col h-screen w-full">
-            {/* Header */}
-            <div className="z-15 flex w-full h-25 items-center justify-between select-none border-b border-white/10 px-4 bg-gradient-to-r from-slate-800/40 via-blue-900/30 to-slate-800/40 backdrop-blur-lg">
-                <div className="flex justify-start items-center gap-2">
-                    <PanelLeftIcon style={{ color: "white", cursor: "pointer" }} onClick={onSidebarToggle} />
-                    <div className="border-l border-white/50 h-5 mx-2" />
-                        <Image src="/Athenia2.png" alt="Athenia Profile Image" width={40} height={40} className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30" />
-                    <div className="flex flex-col justify-start ">
-                        <h1 className="text-xl font-bold text-white ">
-                            Athenia
-                        </h1>
-                        <span className="flex items-center gap-1 text-xs">
-                            <span className="text-green-500">
-                                Online
-                            </span> 
-                        </span>
-                        <p className="text-[8px] text-white">Session: {actualSessionId} <span className="text-orange-500 text-[10px]">(Debug Mode)</span></p>
-                    </div>
+        <I18nextProvider i18n={i18n}>
+            <div className="flex shrink-0 items-center flex-col h-screen w-full">
+                {/* Header */}
+                <div className="z-15 flex w-full h-25 items-center justify-between select-none border-b border-white/10 px-4 bg-gradient-to-r from-slate-800/40 via-blue-900/30 to-slate-800/40 backdrop-blur-lg">
+                    <div className="flex justify-start items-center gap-2">
+                        <PanelLeftIcon style={{ color: "white", cursor: "pointer" }} onClick={onSidebarToggle} />
+                        <div className="border-l border-white/50 h-5 mx-2" />
+                            <Image src="/Athenia2.png" alt="Athenia Profile Image" width={40} height={40} className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30" />
+                        <div className="flex flex-col justify-start ">
+                            <h1 className="text-xl font-bold text-white ">
+                                Athenia
+                            </h1>
+                            <span className="flex items-center gap-1 text-xs">
+                                <span className="text-green-500">
+                                    {t("online_indicator")}
+                                </span> 
+                            </span>
+                            <p className="text-[8px] text-white">Session: {actualSessionId} <span className="text-orange-500 text-[10px]">(Debug Mode)</span></p>
+                        </div>
 
 
-                </div>
-                {/* DEBUG MODE ONLY NOT PERMANENT */}
-                <div className="flex flex-col justify-center items-center ">
-                    <label className="switch">
-                        <input
-                            className="cb"
-                            type="checkbox"
-                            checked={useAltBackend}
-                            onChange={() => setUseAltBackend((prev) => !prev)}
-                        />
-                        <span className="toggle">
-                            <span className="flex flex-col right">A
-                                <span className="text-[8px]">nton</span>
-                            </span>
-                            <span className="left flex flex-col">G
-                                <span className="text-[8px]">erson</span>
-                            </span>
-                        </span>
-                    </label>
-                    <span className="text-xs text-white/70 block mt-1">
-                        Backend (Debug mode): <span className="font-mono text-orange-400">{backendUrl}</span>
-                    </span>
-                </div>
-                <div className="relative">
-                    <div className="flex flex-col gap-1 items-center justify-center border-l border-white/50 h-5 mx-2 px-5">
-                        <Image src={isGuest ? "/Default_User.jpg" : "/default-user.webp"} alt="User" width={40} height={40} className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30" onClick={() => setDropdownOpen(!dropdownOpen)} />
                     </div>
-                    <motion.div id="profile-dropdown" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2 }} className={`absolute right-4 top-10 w-64 rounded-xl shadow-lg backdrop-blur-xl bg-[rgba(26,30,44,1)] border border-white/10 text-white ${ dropdownOpen ? '' : 'hidden' }`} >
-                        {/* Header */}
-                        <div className="px-5 py-4 border-b border-white/10">
-                            <div className="flex items-center gap-3">
-                                <BadgeCheckIcon className="w-5 h-5 text-green-400" />
-                                <div className="text-sm">
-                                    <p className="text-gray-300">Signed in as</p>
-                                    <p className="font-semibold text-white">{isGuest ? 'Guest' : userName || "N/A"}</p>
+                    {/* DEBUG MODE ONLY NOT PERMANENT */}
+                    <div className="flex flex-col justify-center items-center ">
+                        <label className="switch">
+                            <input
+                                className="cb"
+                                type="checkbox"
+                                checked={useAltBackend}
+                                onChange={() => setUseAltBackend((prev) => !prev)}
+                            />
+                            <span className="toggle">
+                                <span className="flex flex-col right">A
+                                    <span className="text-[8px]">nton</span>
+                                </span>
+                                <span className="left flex flex-col">G
+                                    <span className="text-[8px]">erson</span>
+                                </span>
+                            </span>
+                        </label>
+                        <span className="text-xs text-white/70 block mt-1">
+                            Backend (Debug mode): <span className="font-mono text-orange-400">{backendUrl}</span>
+                        </span>
+                    </div>
+                    <div className="relative">
+
+                        <div className="flex flex-col gap-1 items-center justify-center border-l border-white/50 h-5 mx-2 px-5">
+                            <Image src={isGuest ? "/Default_User.jpg" : "/default-user.webp"} alt="User" width={40} height={40} className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30" onClick={() => setDropdownOpen(!dropdownOpen)} />
+                        </div>
+                        <motion.div id="profile-dropdown" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2 }} className={`absolute right-4 top-10 w-64 rounded-xl shadow-lg backdrop-blur-xl bg-[rgba(26,30,44,1)] border border-white/10 text-white ${ dropdownOpen ? '' : 'hidden' }`} >
+                            {/* Header */}
+                            <div className="px-5 py-4 border-b border-white/10">
+                                <div className="flex items-center gap-3">
+                                    <BadgeCheckIcon className="w-5 h-5 text-green-400" />
+                                    <div className="text-sm">
+                                        <p className="text-gray-300">{t("signed_in_as")}</p>
+                                        <p className="font-semibold text-white">{isGuest ? 'Guest' : userName || "N/A"}</p>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        {/* Menu Items */}
-                        <div className="py-2 space-y-1">
-                            <a className="flex items-center gap-3 px-5 py-2 text-sm hover:bg-white/10 transition-colors cursor-pointer" onClick={() => {handleProfile(); setDropdownOpen(false);}} >
-                                <User2Icon className="w-4 h-4 text-white/80" />
-                                <span className="text-white">My Profile</span>
-                            </a>
-                            <a href="#" className="flex items-center gap-3 px-5 py-2 text-sm hover:bg-white/10 transition-colors">
-                                <SettingsIcon className="w-4 h-4 text-white/80" />
-                                <span className="text-white">Settings</span>
-                            </a>
-                            <a onClick={() => {handleLogOut(); }} className="flex items-center gap-3 px-5 py-2 text-sm hover:bg-red-500/10 transition-colors cursor-pointer">
-                                <LogOutIcon className="w-4 h-4 text-red-400" />
-                                <span className="text-red-300">Logout</span>
-                            </a>
-                        </div>
-                    </motion.div>
-                </div>
-            </div>
-
-            {/* Chats */}
-            <div ref={chatContainerRef} className="h-screen w-full  py-10 px-2 md:px-15 sm:px-10 lg:px-30 z-10 overflow-y-auto" style={{ maxHeight: "calc(100vh - 140px)" }}  >
-            {chatHistory.length === 0 && !loading && (
-                <div className="flex flex-1 justify-center items-center select-none ">
-                    <div className="mx-auto p-8 w-150 rounded-2xl text-white text-center  ">
-                        <Image src="/Athenia2.png" alt="Athenia Avatar" width={120} height={120} className="mx-auto mb-3 w-30 h-30 rounded-full ring-2 ring-orange-300/50" />
-                        <h2 className="text-3xl font-bold text-white drop-shadow">Welcome to AI Ask Librarian!</h2>
-                        <p className="text-white/90 text-base">
-                            Hi there! I am Athenia, your friendly library assistant.<br /> <span className="text-orange-600 font-semibold">Try these:</span>
-                        </p>
-                        <ul className="text-white/80 text-sm text-center mx-auto ">
-                            <li>🔍 <span className="font-medium">Find a book:</span> <span className="italic text-white/90">"Find books by J.K. Rowling"</span></li>
-                            <li>📚 <span className="font-medium">Search Book Details:</span> <span className="italic text-white/90">"Search details for The Hobbit"</span></li>
-                            <li>❓ <span className="font-medium">Ask anything:</span> <span className="italic text-white/90">"How do I renew a loan?"</span></li>
-                        </ul>
-                        <div className="pt-2">
-                            <span className="text-white/60 text-xs">Powered by AI • Secure & private</span>
-                        </div>
+                            {/* Menu Items */}
+                            <div className="py-2 space-y-1">
+                                <a className="block px-5 py-2 text-sm text-gray-400">
+                                    {t("current_language")}: {i18n.language === "ja" ? "Japanese (JA)" : i18n.language === "en" ? "English (US)" : i18n.language}
+                                </a>
+                                
+                                <a className="flex items-center gap-3 px-5 py-2 text-sm hover:bg-white/10 transition-colors cursor-pointer" onClick={() => {handleProfile(); setDropdownOpen(false);}} >
+                                    <User2Icon className="w-4 h-4 text-white/80" />
+                                    <span className="text-white">{t("my_profile")}</span>
+                                </a>
+                                <a href="#" className="flex items-center gap-3 px-5 py-2 text-sm hover:bg-white/10 transition-colors">
+                                    <SettingsIcon className="w-4 h-4 text-white/80" />
+                                    <span className="text-white">{t("settings")}</span>
+                                </a>
+                                <a onClick={() => {handleLogOut(); }} className="flex items-center gap-3 px-5 py-2 text-sm hover:bg-red-500/10 transition-colors cursor-pointer">
+                                    <LogOutIcon className="w-4 h-4 text-red-400" />
+                                    <span className="text-red-300">{t("logout")}</span>
+                                </a>
+                            </div>
+                        </motion.div>
                     </div>
                 </div>
-            )}
-            {chatHistory.map((item, idx) => {
-                if (item.type === "user") {
-                return (
-                        <div key={idx} className="flex w-full justify-end items-center text-wrap gap-3 p-4">
-                            <div className="p-3 max-w-[80%] rounded-lg space-y-4 bg-gradient-to-r from-orange-500 via-orange-600 to-orange-500 text-white shadow-orange-500/20">
-                                <p>{item.message}</p>
-                            </div>
-                            <div>
-                                <Image src={isGuest ? "/Default_User.jpg" : "/default-user.webp"} alt="User" width={40} height={40} className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30" />
+
+                {/* Chats */}
+                <div ref={chatContainerRef} className="h-screen w-full  py-10 px-2 md:px-15 sm:px-10 lg:px-30 z-10 overflow-y-auto" style={{ maxHeight: "calc(100vh - 140px)" }}  >
+                {chatHistory.length === 0 && !loading && (
+                    <div className="flex flex-1 justify-center items-center select-none ">
+                        <div className="mx-auto p-8 w-150 rounded-2xl text-white text-center  ">
+                            <Image src="/Athenia2.png" alt="Athenia Avatar" width={120} height={120} className="mx-auto mb-3 w-30 h-30 rounded-full ring-2 ring-orange-300/50" />
+                            <h2 className="text-3xl font-bold text-white drop-shadow">{t("welcome_to_ai_ask_librarian")}</h2>
+                            <p className="text-white/90 text-base">
+                                {t("hi_there")}
+                                <br /> <span className="text-orange-600 font-semibold">{t("try_these")}</span>
+                            </p>
+                            <ul className="text-white/80 text-sm text-center mx-auto ">
+                                <li>🔍 <span className="font-medium">{t("find_a_book")}</span> <span className="italic text-white/90">{t("find_a_book_example")}</span></li>
+                                <li>📚 <span className="font-medium">{t("search_book_details")}</span> <span className="italic text-white/90">{t("search_book_details_example")}</span></li>
+                                <li>❓ <span className="font-medium">{t("ask_anything")}</span> <span className="italic text-white/90">{t("ask_anything_example")}</span></li>
+                            </ul>
+                            <div className="pt-2">
+                                <span className="text-white/60 text-xs">{t("powered_by_ai_secure_private")}</span>
                             </div>
                         </div>
-                );
-                } else if (item.type === "ai") {
-                return (
-                    <div key={idx} className="flex w-full justify-start text-wrap gap-3 p-4">
+                    </div>
+                )}
+                {chatHistory.map((item, idx) => {
+                    if (item.type === "user") {
+                    return (
+                            <div key={idx} className="flex w-full justify-end items-center text-wrap gap-3 p-4">
+                                <div className="p-3 max-w-[80%] rounded-lg space-y-4 bg-gradient-to-r from-orange-500 via-orange-600 to-orange-500 text-white shadow-orange-500/20">
+                                    <p>{item.message}</p>
+                                </div>
+                                <div>
+                                    <Image src={isGuest ? "/Default_User.jpg" : "/default-user.webp"} alt="User" width={40} height={40} className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30" />
+                                </div>
+                            </div>
+                    );
+                    } else if (item.type === "ai") {
+                    return (
+                        <div key={idx} className="flex w-full justify-start text-wrap gap-3 p-4">
+                            <div>
+                                <Image src="/Athenia2.png" alt="Avatar" width={40} height={40} className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30" />
+                            </div>
+                            <div className="p-3 max-w-[80%] rounded-lg space-y-4 bg-gradient-to-r from-slate-700/80 to-slate-600/80 text-white border border-slate-500/30 backdrop-blur-sm shadow-slate-900/20">
+                                <p>{item.message}</p>
+                            </div>
+                        </div>
+                    );
+                    } else if (item.type === "booksearch") {
+                    // Pagination logic
+                    const totalPages = Math.ceil(item.books.length / booksPerPage);
+                    const booksPage = booksPages[idx] || 1;
+                    const startIdx = (booksPage - 1) * booksPerPage;
+                    const currentBooks = item.books.slice(startIdx, startIdx + booksPerPage);
+
+                    return (
+                        <div key={idx} className="flex flex-col w-[100%] ">
+                            {/* GENERAL CHAT */}
+                            <div className="flex w-full justify-start text-wrap gap-3 p-4">
+                                <div>
+                                    <Image src="/Athenia2.png" alt="Avatar" width={40} height={40} className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30" />
+                                </div>
+                                <div className="p-5 max-w-[80%] rounded-lg space-y-4 bg-gradient-to-r from-slate-700/80 to-slate-600/80 text-white border border-slate-500/30 backdrop-blur-sm shadow-slate-900/20">
+                                    <p>{item.message}</p>
+                                </div>
+                            </div>
+                            {/* BOOKS LIST */}
+                            {currentBooks.map((book: { title: string; author: string; year: number; publisher: string; isbn: string; quantity_available: number; biblio_id : number }, bIdx: number) => (
+                            <div key={bIdx} className="flex w-full justify-start text-wrap gap-3 p-4">
+                                <div>
+                                    <Image src="/Athenia2.png" alt="Avatar" width={40} height={40} className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30" />
+                                </div>
+                                <div className="w-full max-w-[80%] lg:max-w-[80%] sm:max-w-[100%] md:max-w-[80%] h-full p-3 sm:p-5 md:p-6 lg:p-7 space-y-4  bg-gradient-to-r from-slate-700/80 to-slate-600/80  text-white  rounded-xl shadow-md  border-l-4 border-orange-500/100 backdrop-blur-sm bg-opacity-80 bg-clip-padding hover:shadow-lg transition-shadow duration-300 ">
+                                    <div className="flex gap-2 h-12 justify-between items-center">
+                                        <h1 className="text-sm sm:text-lg lg:text-2xl capitalize font-bold w-3/4 line-clamp-2">
+                                            {book.title.length > 60 ? `${book.title.substring(0, 57)}...` : book.title}
+                                        </h1>
+                                        <span className={`text-sm text-center font-semibold ${book.quantity_available > 0 ? 'bg-green-500' : 'bg-red-400'} text-white px-3 py-1 rounded-full `}>
+                                            {book.quantity_available} <span className="hidden  sm:inline md:inline lg:inline">{t("available")}</span>
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between text-gray-600 text-sm">
+                                    <div>
+                                        <span className="block text-[rgb(255,255,255,0.5)]">{t("author")}</span>
+                                        <span className="font-semibold text-[rgb(255,255,255)]">{book.author}</span>
+                                    </div>
+                                    <div>
+                                        <span className="block text-[rgb(255,255,255,0.5)]">{t("year")}</span>
+                                        <span className="font-semibold text-[rgb(255,255,255)]">{book.year}</span>
+                                    </div>
+                                    </div>
+                                    <div className="border border-gray-200 rounded-md px-4 py-3 bg-gray-50 text-sm">
+                                        <div className="flex justify-between gap-2">
+                                            <span className="text-gray-500 w-1/2">{t("publisher")}</span>
+                                            <span className="font-medium text-black w-1/2">{book.publisher}</span>
+                                        </div>
+                                        <hr className="border-gray-300 w-full my-3" />
+                                        <div className="flex justify-between mt-1 gap-2">
+                                            <span className="text-gray-500 w-1/2">{t("isbn")}</span>
+                                            <span className="text-black w-1/2">{book.isbn}</span>
+                                        </div>
+                                        <hr className="border-gray-300 w-full my-3" />
+                                        <div className="flex justify-between mt-1 gap-2">
+                                            <span className="text-gray-500 w-1/2">{t("biblio_id")}</span>
+                                            <span className="text-black w-1/2">{book.biblio_id}</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-4">
+                                        <button className="cursor-pointer flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-md font-medium text-sm"
+                                            onClick={() => {
+                                                setReserveData({
+                                                    // patron_id: localStorage.getItem("patron_id") ? Number(localStorage.getItem("patron_id")) : 0,
+                                                    patron_id: patronId ? Number(patronId) : 0,
+                                                    book_title: book.title,
+                                                    biblio_id: book.biblio_id,
+                                                });
+                                                setReserveModalOpen(true);
+                                            }} >
+                                            📚 {t("reserve_book")}
+                                        </button>
+                                        <button className="cursor-pointer flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-md font-medium text-sm"
+                                            onClick={() => handleMoreInfo(book.biblio_id)} >
+                                        🧾 {t("more_info")}
+                                        </button>
+                                    </div>
+
+                                    {/* Pagination Controls */}
+                                    <div className="flex flex-wrap gap-2 items-center mt-1   justify-between">
+                                        <div>
+                                        {/* <button className="cursor-pointer px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-md"
+                                            onClick={() => {
+                                                setShowAllBooks(item.books);
+                                                setShowAllModalOpen(true);
+                                            }}>
+                                            Show All
+                                        </button> */}
+                                        </div>
+                                        <div className=" flex items-center gap-2">
+                                            <button className="cursor-pointer px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-md disabled:opacity-50" disabled={booksPage === 1}
+                                                onClick={() =>
+                                                    setBooksPages((prev) => ({
+                                                        ...prev,
+                                                        [idx]: Math.max(1, (prev[idx] || 1) - 1),
+                                                    }))
+                                                }
+                                            > ←
+                                            </button>
+                                            <span className="text-sm ">
+                                                {booksPage} of {totalPages}
+                                            </span>
+                                            <button className=" cursor-pointer px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-md disabled:opacity-50" disabled={booksPage === totalPages}
+                                                onClick={() =>
+                                                    setBooksPages((prev) => ({
+                                                        ...prev,
+                                                        [idx]: Math.min(totalPages, (prev[idx] || 1) + 1),
+                                                    }))
+                                                }
+                                            > →
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            ))}
+                        </div>
+                    );
+                    }
+                    return null;
+                })}
+                {loading && (
+                    <div className="flex w-full justify-start text-wrap gap-3 p-4 opacity-60">
                         <div>
                             <Image src="/Athenia2.png" alt="Avatar" width={40} height={40} className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30" />
                         </div>
-                        <div className="p-3 max-w-[80%] rounded-lg space-y-4 bg-gradient-to-r from-slate-700/80 to-slate-600/80 text-white border border-slate-500/30 backdrop-blur-sm shadow-slate-900/20">
-                            <p>{item.message}</p>
+                        <div className="p-5 max-w-[80%] rounded-lg space-y-4 bg-gradient-to-r from-slate-700/80 to-slate-600/80 text-white border border-slate-500/30 backdrop-blur-sm shadow-slate-900/20">
+                            <div className="flex flex-row gap-2">
+                                <div className="w-1 h-1 rounded-full bg-slate-500 animate-bounce [animation-delay:.7s]"></div>
+                                <div className="w-1 h-1 rounded-full bg-slate-500 animate-bounce [animation-delay:.3s]"></div>
+                                <div className="w-1 h-1 rounded-full bg-slate-500 animate-bounce [animation-delay:.7s]"></div>
+                            </div>
                         </div>
                     </div>
-                );
-                } else if (item.type === "booksearch") {
-                // Pagination logic
-                const totalPages = Math.ceil(item.books.length / booksPerPage);
-                const booksPage = booksPages[idx] || 1;
-                const startIdx = (booksPage - 1) * booksPerPage;
-                const currentBooks = item.books.slice(startIdx, startIdx + booksPerPage);
+                )}
+                </div>
 
-                return (
-                    <div key={idx} className="flex flex-col w-[100%] ">
-                        {/* GENERAL CHAT */}
-                        <div className="flex w-full justify-start text-wrap gap-3 p-4">
-                            <div>
-                                <Image src="/Athenia2.png" alt="Avatar" width={40} height={40} className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30" />
-                            </div>
-                            <div className="p-5 max-w-[80%] rounded-lg space-y-4 bg-gradient-to-r from-slate-700/80 to-slate-600/80 text-white border border-slate-500/30 backdrop-blur-sm shadow-slate-900/20">
-                                <p>{item.message}</p>
-                            </div>
-                        </div>
-                        {/* BOOKS LIST */}
-                        {currentBooks.map((book: { title: string; author: string; year: number; publisher: string; isbn: string; quantity_available: number; biblio_id : number }, bIdx: number) => (
-                        <div key={bIdx} className="flex w-full justify-start text-wrap gap-3 p-4">
-                            <div>
-                                <Image src="/Athenia2.png" alt="Avatar" width={40} height={40} className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30" />
-                            </div>
-                            <div className="w-full max-w-[80%] lg:max-w-[80%] sm:max-w-[100%] md:max-w-[80%] h-full p-3 sm:p-5 md:p-6 lg:p-7 space-y-4  bg-gradient-to-r from-slate-700/80 to-slate-600/80  text-white  rounded-xl shadow-md  border-l-4 border-orange-500/100 backdrop-blur-sm bg-opacity-80 bg-clip-padding hover:shadow-lg transition-shadow duration-300 ">
-                                <div className="flex gap-2 h-12 justify-between items-center">
-                                    <h1 className="text-sm sm:text-lg lg:text-2xl capitalize font-bold w-3/4 line-clamp-2">
-                                        {book.title.length > 60 ? `${book.title.substring(0, 57)}...` : book.title}
-                                    </h1>
-                                    <span className={`text-sm text-center font-semibold ${book.quantity_available > 0 ? 'bg-green-500' : 'bg-red-400'} text-white px-3 py-1 rounded-full `}>
-                                        {book.quantity_available} <span className="hidden  sm:inline md:inline lg:inline">AVAILABLE</span>
-                                    </span>
-                                </div>
-                                <div className="flex justify-between text-gray-600 text-sm">
-                                <div>
-                                    <span className="block text-[rgb(255,255,255,0.5)]">Author</span>
-                                    <span className="font-semibold text-[rgb(255,255,255)]">{book.author}</span>
-                                </div>
-                                <div>
-                                    <span className="block text-[rgb(255,255,255,0.5)]">Year</span>
-                                    <span className="font-semibold text-[rgb(255,255,255)]">{book.year}</span>
-                                </div>
-                                </div>
-                                <div className="border border-gray-200 rounded-md px-4 py-3 bg-gray-50 text-sm">
-                                    <div className="flex justify-between gap-2">
-                                        <span className="text-gray-500 w-1/2">Publisher</span>
-                                        <span className="font-medium text-black w-1/2">{book.publisher}</span>
-                                    </div>
-                                    <hr className="border-gray-300 w-full my-3" />
-                                    <div className="flex justify-between mt-1 gap-2">
-                                        <span className="text-gray-500 w-1/2">ISBN</span>
-                                        <span className="text-black w-1/2">{book.isbn}</span>
-                                    </div>
-                                    <hr className="border-gray-300 w-full my-3" />
-                                    <div className="flex justify-between mt-1 gap-2">
-                                        <span className="text-gray-500 w-1/2">Bilbio ID</span>
-                                        <span className="text-black w-1/2">{book.biblio_id}</span>
-                                    </div>
-                                </div>
-                                <div className="flex gap-4">
-                                    <button className="cursor-pointer flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-md font-medium text-sm"
-                                        onClick={() => {
-                                            setReserveData({
-                                                // patron_id: localStorage.getItem("patron_id") ? Number(localStorage.getItem("patron_id")) : 0,
-                                                patron_id: patronId ? Number(patronId) : 0,
-                                                book_title: book.title,
-                                                biblio_id: book.biblio_id,
-                                            });
-                                            setReserveModalOpen(true);
-                                        }} >
-                                        📚 Reserve Book
-                                    </button>
-                                    <button className="cursor-pointer flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-md font-medium text-sm"
-                                        onClick={() => handleMoreInfo(book.biblio_id)} >
-                                    🧾 More Info
-                                    </button>
-                                </div>
-
-                                {/* Pagination Controls */}
-                                <div className="flex flex-wrap gap-2 items-center mt-1   justify-between">
-                                    <div>
-                                    {/* <button className="cursor-pointer px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-md"
-                                        onClick={() => {
-                                            setShowAllBooks(item.books);
-                                            setShowAllModalOpen(true);
-                                        }}>
-                                        Show All
-                                    </button> */}
-                                    </div>
-                                    <div className=" flex items-center gap-2">
-                                        <button className="cursor-pointer px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-md disabled:opacity-50" disabled={booksPage === 1}
-                                            onClick={() =>
-                                                setBooksPages((prev) => ({
-                                                    ...prev,
-                                                    [idx]: Math.max(1, (prev[idx] || 1) - 1),
-                                                }))
-                                            }
-                                        > ←
-                                        </button>
-                                        <span className="text-sm ">
-                                            {booksPage} of {totalPages}
-                                        </span>
-                                        <button className=" cursor-pointer px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-md disabled:opacity-50" disabled={booksPage === totalPages}
-                                            onClick={() =>
-                                                setBooksPages((prev) => ({
-                                                    ...prev,
-                                                    [idx]: Math.min(totalPages, (prev[idx] || 1) + 1),
-                                                }))
-                                            }
-                                        > →
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        ))}
-                    </div>
-                );
-                }
-                return null;
-            })}
-            {loading && (
-                <div className="flex w-full justify-start text-wrap gap-3 p-4 opacity-60">
-                    <div>
-                        <Image src="/Athenia2.png" alt="Avatar" width={40} height={40} className="w-10 h-10  bg-white cursor-pointer rounded-full ring-2 ring-white/30" />
-                    </div>
-                    <div className="p-5 max-w-[80%] rounded-lg space-y-4 bg-gradient-to-r from-slate-700/80 to-slate-600/80 text-white border border-slate-500/30 backdrop-blur-sm shadow-slate-900/20">
-                        <div className="flex flex-row gap-2">
-                            <div className="w-1 h-1 rounded-full bg-slate-500 animate-bounce [animation-delay:.7s]"></div>
-                            <div className="w-1 h-1 rounded-full bg-slate-500 animate-bounce [animation-delay:.3s]"></div>
-                            <div className="w-1 h-1 rounded-full bg-slate-500 animate-bounce [animation-delay:.7s]"></div>
-                        </div>
+                {/* Chat Input */}
+                <div className="w-full flex justify-center pb-8 pt-2">
+                    <div className="flex items-center bg-[rgba(24,28,44,0.88)] shadow-lg rounded-2xl px-3 py-2 gap-2 max-w-2xl border border-slate-800/40 backdrop-blur-sm lg:w-full w-3/4">
+                        <input type="text" placeholder={t("type_your_message")} value={message} onChange={(e) => setMessage(e.target.value)} className=" flex-1 bg-transparent border-none outline-none text-base px-3 py-3 text-white placeholder:text-slate-400 font-medium" onKeyDown={(e) => e.key === 'Enter' && handleSend()} disabled={loading} />
+                        <AnimatePresence mode="wait" initial={false}>
+                            {!message.trim() ? (
+                                <motion.button key="mic" className=" w-11 h-11 flex items-center justify-center bg-white/10 hover:bg-blue-500/90 text-blue-400 hover:text-white rounded-full transition-all shadow focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer " onClick={() => { setVoiceModal(true)} } type="button" aria-label="Start voice input" initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.7 }} transition={{ duration: 0.22 }} disabled={loading} >
+                                    <MicIcon style={{ width: 22, height: 22 }} />
+                                </motion.button>
+                            ) : (
+                                <motion.button key="send" className=" w-11 h-11 flex items-center justify-center bg-gradient-to-br from-orange-500 via-orange-600 to-orange-500 hover:from-orange-600 hover:to-orange-600 text-white rounded-full transition-all shadow focus:outline-none focus:ring-2 focus:ring-orange-400 " onClick={handleSend} type="button" aria-label="Send message" initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.7 }} transition={{ duration: 0.22 }} disabled={loading} >
+                                    <SendIcon style={{ width: 22, height: 22 }} />
+                                </motion.button>
+                            )}
+                        </AnimatePresence>
                     </div>
                 </div>
-            )}
-            </div>
-
-            {/* Chat Input */}
-            <div className="w-full flex justify-center pb-8 pt-2">
-                <div className="flex items-center bg-[rgba(24,28,44,0.88)] shadow-lg rounded-2xl px-3 py-2 gap-2 max-w-2xl border border-slate-800/40 backdrop-blur-sm lg:w-full w-3/4">
-                    <input type="text" placeholder="Type a message..." value={message} onChange={(e) => setMessage(e.target.value)} className=" flex-1 bg-transparent border-none outline-none text-base px-3 py-3 text-white placeholder:text-slate-400 font-medium" onKeyDown={(e) => e.key === 'Enter' && handleSend()} disabled={loading} />
-                    <AnimatePresence mode="wait" initial={false}>
-                        {!message.trim() ? (
-                            <motion.button key="mic" className=" w-11 h-11 flex items-center justify-center bg-white/10 hover:bg-blue-500/90 text-blue-400 hover:text-white rounded-full transition-all shadow focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer " onClick={() => { setVoiceModal(true)} } type="button" aria-label="Start voice input" initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.7 }} transition={{ duration: 0.22 }} disabled={loading} >
-                                <MicIcon style={{ width: 22, height: 22 }} />
-                            </motion.button>
-                        ) : (
-                            <motion.button key="send" className=" w-11 h-11 flex items-center justify-center bg-gradient-to-br from-orange-500 via-orange-600 to-orange-500 hover:from-orange-600 hover:to-orange-600 text-white rounded-full transition-all shadow focus:outline-none focus:ring-2 focus:ring-orange-400 " onClick={handleSend} type="button" aria-label="Send message" initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.7 }} transition={{ duration: 0.22 }} disabled={loading} >
-                                <SendIcon style={{ width: 22, height: 22 }} />
-                            </motion.button>
-                        )}
-                    </AnimatePresence>
-                </div>
-            </div>
 
 
 
-            {/* Book Info Modal */}
-            {modalOpen && (
-                <div className="z-99 h-screen bg-black/80 w-full absolute ">
-                    <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0" >
-                        <div className="relative transform overflow-hidden rounded-lg bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10 border border-gray-800 rounded-b-none text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg" >
-                            <div className="w-[100%] bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10  rounded-lg rounded-b-none px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
-                                <div className="sm:flex sm:items-start">
-                                    <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
-                                        <div className="mt-2">
-                                            {modalLoading ? (
-                                                <div className="animate-pulse flex flex-col items-center gap-4 w-full justify-center">
-                                                    <div>
-                                                        <div className="w-48 h-6 bg-slate-400 rounded-md"></div>
-                                                        <div className="w-28 h-4 bg-slate-400 mx-auto mt-3 rounded-md"></div>
+                {/* Book Info Modal */}
+                {modalOpen && (
+                    <div className="z-99 h-screen bg-black/80 w-full absolute ">
+                        <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0" >
+                            <div className="relative transform overflow-hidden rounded-lg bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10 border border-gray-800 rounded-b-none text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg" >
+                                <div className="w-[100%] bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10  rounded-lg rounded-b-none px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                                    <div className="sm:flex sm:items-start">
+                                        <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
+                                            <div className="mt-2">
+                                                {modalLoading ? (
+                                                    <div className="animate-pulse flex flex-col items-center gap-4 w-full justify-center">
+                                                        <div>
+                                                            <div className="w-48 h-6 bg-slate-400 rounded-md"></div>
+                                                            <div className="w-28 h-4 bg-slate-400 mx-auto mt-3 rounded-md"></div>
+                                                        </div>
+                                                        <div className="h-7 bg-slate-400 w-full rounded-md"></div>
+                                                        <div className="h-7 bg-slate-400 w-full rounded-md"></div>
+                                                        <div className="h-7 bg-slate-400 w-full rounded-md"></div>
+                                                        <div className="h-7 bg-slate-400 w-1/2 rounded-md"></div>
                                                     </div>
-                                                    <div className="h-7 bg-slate-400 w-full rounded-md"></div>
-                                                    <div className="h-7 bg-slate-400 w-full rounded-md"></div>
-                                                    <div className="h-7 bg-slate-400 w-full rounded-md"></div>
-                                                    <div className="h-7 bg-slate-400 w-1/2 rounded-md"></div>
-                                                </div>
-                                            ): modalError ? (
-                                                <div className="text-center py-10 text-red-400 font-semibold text-lg">
-                                                    {modalError}
-                                                </div>
-                                            ): modalData ? (
-                                                <div className="flex flex-col text-left">
-                                                    <div className="flex flex-col ">
-                                                        <h3 className="text-2xl font-bold text-orange-400 mb-2 flex items-center gap-2">
-                                                            {/* <BookOpenText className="w-auto h-auto text-orange-500" /> */}
-                                                            {modalData.title ?? "Unknown"}
-                                                        </h3>
-                                                        <h5 className="text-md text-white/80">
-                                                            by: {modalData.author ?? "Unknown"}
-                                                        </h5>
-                                                        <h5 className="text-sm text-white/60">
-                                                            {modalData.publisher ?? "Unknown"}
-                                                        </h5>
+                                                ): modalError ? (
+                                                    <div className="text-center py-10 text-red-400 font-semibold text-lg">
+                                                        {modalError}
                                                     </div>
-                                                    <div className="max-h-120 p-3 overflow-y-auto grid grid-cols-1 gap-4 cursor-pointer ">
-                                                        <div className="rounded-md bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-20 border border-gray-100 rounded-2xl p-5 shadow-lg hover:shadow-xl transition-shadow duration-200">
-                                                            <div className="max-h-80 overflow-y-auto flex flex-col justify-between items-center gap-2 mb-2">
-                                                                <div className="flex justify-between items-center  w-full ">
-                                                                    <span className="font-semibold text-orange-500">Publication Place:</span>
-                                                                    <span className="text-gray-200 text-right">{modalData.publication_place ?? "-"}</span>
-                                                                </div>
-                                                                <div className="flex justify-between items-center  w-full ">
-                                                                    <span className="font-semibold text-orange-500">Year of Publication:</span>
-                                                                    <span className="text-gray-200">{modalData.copyright_date ?? "-"}</span>
-                                                                </div>
-                                                                <div className="flex justify-between items-center  w-full ">
-                                                                    <span className="font-semibold text-orange-300">ISBN:</span>
-                                                                    <span className="text-gray-200 text-right">{modalData.isbn ?? "-"}</span>
-                                                                </div>
-                                                                <div className="flex justify-between items-center  w-full ">
-                                                                    <span className="font-semibold text-orange-300">Biblio Id:</span>
-                                                                    <span className="text-gray-200 text-right">{modalData.biblio_id ?? "-"}</span>
-                                                                </div>
-                                                                <div className="flex justify-between items-center  w-full ">
-                                                                    <span className="font-semibold text-orange-300">Item Type:</span>
-                                                                    <span className="text-gray-200 text-right">{modalData.item_type ?? "-"}</span>
-                                                                </div>
-                                                                <div className="flex justify-between items-center  w-full ">
-                                                                    <span className="font-semibold text-orange-300">Series:</span>
-                                                                    <span className="text-gray-200 text-right">{modalData.series_title ?? "-"}</span>
-                                                                </div>
-                                                                <div className="flex justify-between items-center  w-full ">
-                                                                    <span className="font-semibold text-orange-300">Edition:</span>
-                                                                    <span className="text-gray-200 text-right">{modalData.edition_statement ?? "-"}</span>
-                                                                </div>
-                                                                <div className="flex justify-between items-center  w-full ">
-                                                                    <span className="font-semibold text-orange-300">Collection:</span>
-                                                                    <span className="text-gray-200 text-right">{modalData.collection_title ?? "-"}</span>
-                                                                </div>
-                                                                <div className="flex justify-between items-center  w-full ">
-                                                                    <span className="font-semibold text-orange-300">Note:</span>
-                                                                    <span className="text-gray-200 text-right">{modalData.notes ?? "-"}</span>
-                                                                </div>
-                                                                <div className="flex justify-between items-center  w-full ">
-                                                                    <span className="font-semibold text-orange-300">Abstract:</span>
-                                                                    <span className="text-gray-200 text-right">{modalData.abstract ?? "-"}</span>
+                                                ): modalData ? (
+                                                    <div className="flex flex-col text-left">
+                                                        <div className="flex flex-col ">
+                                                            <h3 className="text-2xl font-bold text-orange-400 mb-2 flex items-center gap-2">
+                                                                {/* <BookOpenText className="w-auto h-auto text-orange-500" /> */}
+                                                                {modalData.title ?? "Unknown"}
+                                                            </h3>
+                                                            <h5 className="text-md text-white/80">
+                                                                by: {modalData.author ?? "Unknown"}
+                                                            </h5>
+                                                            <h5 className="text-sm text-white/60">
+                                                                {modalData.publisher ?? "Unknown"}
+                                                            </h5>
+                                                        </div>
+                                                        <div className="max-h-120 p-3 overflow-y-auto grid grid-cols-1 gap-4 cursor-pointer ">
+                                                            <div className="rounded-md bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-20 border border-gray-100 rounded-2xl p-5 shadow-lg hover:shadow-xl transition-shadow duration-200">
+                                                                <div className="max-h-80 overflow-y-auto flex flex-col justify-between items-center gap-2 mb-2">
+                                                                    <div className="flex justify-between items-center  w-full ">
+                                                                        <span className="font-semibold text-orange-500">{t("publication_place")}:</span>
+                                                                        <span className="text-gray-200 text-right">{modalData.publication_place ?? "-"}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between items-center  w-full ">
+                                                                        <span className="font-semibold text-orange-500">{t("year_of_publication")}:</span>
+                                                                        <span className="text-gray-200">{modalData.copyright_date ?? "-"}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between items-center  w-full ">
+                                                                        <span className="font-semibold text-orange-300">{t("isbn")}:</span>
+                                                                        <span className="text-gray-200 text-right">{modalData.isbn ?? "-"}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between items-center  w-full ">
+                                                                        <span className="font-semibold text-orange-300">{t("biblio_id")}:</span>
+                                                                        <span className="text-gray-200 text-right">{modalData.biblio_id ?? "-"}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between items-center  w-full ">
+                                                                        <span className="font-semibold text-orange-300">{t("item_type")}:</span>
+                                                                        <span className="text-gray-200 text-right">{modalData.item_type ?? "-"}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between items-center  w-full ">
+                                                                        <span className="font-semibold text-orange-300">{t("series")}:</span>
+                                                                        <span className="text-gray-200 text-right">{modalData.series_title ?? "-"}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between items-center  w-full ">
+                                                                        <span className="font-semibold text-orange-300">{t("edition")}:</span>
+                                                                        <span className="text-gray-200 text-right">{modalData.edition_statement ?? "-"}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between items-center  w-full ">
+                                                                        <span className="font-semibold text-orange-300">{t("collection")}:</span>
+                                                                        <span className="text-gray-200 text-right">{modalData.collection_title ?? "-"}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between items-center  w-full ">
+                                                                        <span className="font-semibold text-orange-300">{t("note")}:</span>
+                                                                        <span className="text-gray-200 text-right">{modalData.notes ?? "-"}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between items-center  w-full ">
+                                                                        <span className="font-semibold text-orange-300">{t("abstract")}:</span>
+                                                                        <span className="text-gray-200 text-right">{modalData.abstract ?? "-"}</span>
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </div>
+                                                        <span className="mt-5 text-center text-white/60 italic text-sm">{t("biblio_record_last_updated")}: {modalData.timestamp?.replace("T", " ").replace("+08:00", "") || "—"}</span>
                                                     </div>
-                                                    <span className="mt-5 text-center text-white/60 italic text-sm">Biblio record last updated: {modalData.timestamp?.replace("T", " ").replace("+08:00", "") || "—"}</span>
-                                                </div>
-                                            ) : null}
+                                                ) : null}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div className="bg-gray-900 border-t border-gray-800 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
-                                <button className="cursor-pointer inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto" type="button"
-                                    onClick={() => {
-                                        setModalOpen(false);
-                                        setModalData(null);
-                                        setModalError(null);
-                                        setModalLoading(false);
-                                    }}
-                                    >
-                                    Continue
-                                </button>
+                                <div className="bg-gray-900 border-t border-gray-800 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                                    <button className="cursor-pointer inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto" type="button"
+                                        onClick={() => {
+                                            setModalOpen(false);
+                                            setModalData(null);
+                                            setModalError(null);
+                                            setModalLoading(false);
+                                        }}
+                                        >
+                                        {t("close")}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
-            {/* Reservation Modal */}
-            {reserveModalOpen && reserveData && (
-                <div className="z-99 h-screen bg-black/80 w-full absolute ">
-                    <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0" >
-                        <div className="relative transform overflow-hidden rounded-lg bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10 border border-gray-800 rounded-b-none text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg" >
-                            <div className="w-[100%] bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10  rounded-lg rounded-b-none px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
-                                <div className="sm:flex sm:items-start">
-                                    <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
-                                        <div className="mt-2">
-                                                <div className="flex flex-col text-left">
-                                                    <div className="flex flex-col ">
-                                                        <h3 className="text-2xl font-bold text-orange-400 mb-2 flex items-center gap-2">
-                                                            <BookOpenText className="w-auto h-auto text-orange-500" />
-                                                            <span>Reserve Book</span>
-                                                        </h3>
-                                                        <p className="text-sm italic text-white/70">
-                                                            Reserve a copy of <span className="font-bold text-orange-600">{reserveData.book_title}. </span> Please provide your details below and make sure to select a pickup library.
-                                                        </p>
-                                                    </div>
-                                                    <div className="max-h-120 p-3 overflow-y-auto grid grid-cols-1 gap-4 cursor-pointer ">
-                                                        <div className="rounded-md bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-20 border border-gray-100 rounded-2xl px-4 shadow-lg hover:shadow-xl transition-shadow duration-200">\
-                                                            <div className="max-h-80 overflow-y-auto flex flex-col justify-between items-center gap-2 ">
-                                                                <div className="flex justify-between items-center  w-full ">
-                                                                    <span className="font-semibold text-orange-300">Name:</span>
-                                                                    <span className="text-gray-200 text-right">{userName ? userName : "Please Login first."}</span>
-                                                                </div>
-                                                                <div className="flex justify-between items-center  w-full ">
-                                                                    <span className="font-semibold text-orange-300">Patron ID:</span>
-                                                                    <span className="text-gray-200 text-right">{reserveData.patron_id ? reserveData.patron_id : "Please Login first."}</span>
-                                                                </div>
-                                                                <div className="flex justify-between items-center  w-full ">
-                                                                    <span className="font-semibold text-orange-300">Biblio ID:</span>
-                                                                    <span className="text-gray-200 text-right">{reserveData.biblio_id ?? "N/A"}</span>
-                                                                </div>
-                                                                <div className="flex justify-between items-center  w-full ">
-                                                                    <span className="font-semibold text-orange-300">Available Copies:</span>
-                                                                    <span className="text-gray-200 text-right">
-                                                                        {availableCount === 0 || availableCount === null
-                                                                            ? "No available items to reserve."
-                                                                            : availableCount}
-                                                                        </span>
-                                                                </div>
-                                                                <div className="mb-2">
-                                                                    <label htmlFor="library" className="block text-orange-300 mb-2 text-sm">
-                                                                        Select Pickup Library:
-                                                                    </label>
-                                                                    <select id="library" value={selectedLibrary} onChange={(e) => setSelectedLibrary(e.target.value)} className="w-full bg-slate-900 text-white border border-purple-500 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
-                                                                        <option value="" disabled>--</option>
-                                                                        {libraries.map((lib) => (
-                                                                            <option key={lib.library_id} value={lib.library_id}>
-                                                                            {lib.name}
-                                                                            </option>
-                                                                        ))}
-                                                                    </select>
+                )}
+                {/* Reservation Modal */}
+                {reserveModalOpen && reserveData && (
+                    <div className="z-99 h-screen bg-black/80 w-full absolute ">
+                        <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0" >
+                            <div className="relative transform overflow-hidden rounded-lg bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10 border border-gray-800 rounded-b-none text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg" >
+                                <div className="w-[100%] bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10  rounded-lg rounded-b-none px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                                    <div className="sm:flex sm:items-start">
+                                        <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
+                                            <div className="mt-2">
+                                                    <div className="flex flex-col text-left">
+                                                        <div className="flex flex-col ">
+                                                            <h3 className="text-2xl font-bold text-orange-400 mb-2 flex items-center gap-2">
+                                                                <BookOpenText className="w-auto h-auto text-orange-500" />
+                                                                <span>{t("reserve_book")}</span>
+                                                            </h3>
+                                                            <p className="text-sm italic text-white/70">
+                                                                {t("reserve_a_copy_of")} <span className="font-bold text-orange-600">{reserveData.book_title}. </span> {t("please_provide_your_details_below_and_make_sure_to_select_a_pickup_library")}
+                                                            </p>
+                                                        </div>
+                                                        <div className="max-h-120 p-3 overflow-y-auto grid grid-cols-1 gap-4 cursor-pointer ">
+                                                            <div className="rounded-md bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-20 border border-gray-100 rounded-2xl px-4 shadow-lg hover:shadow-xl transition-shadow duration-200">\
+                                                                <div className="max-h-80 overflow-y-auto flex flex-col justify-between items-center gap-2 ">
+                                                                    <div className="flex justify-between items-center  w-full ">
+                                                                        <span className="font-semibold text-orange-300">{t("name")}:</span>
+                                                                        <span className="text-gray-200 text-right">{userName ? userName : "Please Login first."}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between items-center  w-full ">
+                                                                        <span className="font-semibold text-orange-300">{t("patron_id")}:</span>
+                                                                        <span className="text-gray-200 text-right">{reserveData.patron_id ? reserveData.patron_id : "Please Login first."}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between items-center  w-full ">
+                                                                        <span className="font-semibold text-orange-300">{t("biblio_id")}:</span>
+                                                                        <span className="text-gray-200 text-right">{reserveData.biblio_id ?? "N/A"}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between items-center  w-full ">
+                                                                        <span className="font-semibold text-orange-300">{t("available_copies")}:</span>
+                                                                        <span className="text-gray-200 text-right">
+                                                                            {availableCount === 0 || availableCount === null
+                                                                                ? t("no_available_items_to_reserve")
+                                                                                : availableCount}
+                                                                            </span>
+                                                                    </div>
+                                                                    <div className="mb-2">
+                                                                        <label htmlFor="library" className="block text-orange-300 mb-2 text-sm">
+                                                                            {t("select_pickup_library")}:
+                                                                        </label>
+                                                                        <select id="library" value={selectedLibrary} onChange={(e) => setSelectedLibrary(e.target.value)} className="w-full bg-slate-900 text-white border border-purple-500 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                                                            <option value="" disabled>--</option>
+                                                                            {libraries.map((lib) => (
+                                                                                <option key={lib.library_id} value={lib.library_id}>
+                                                                                {lib.name}
+                                                                                </option>
+                                                                            ))}
+                                                                        </select>
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                    </div>
 
-                                                </div>
+                                                    </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div className="bg-gray-900 border-t border-gray-800 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
-                                <button
-                                    onClick={() => {
-                                        handleReserve();
-                                    }}
-                                    className="mb-2 cursor-pointer inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto"
-                                    type="button"
-                                    >
-                                    Continue
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        setReserveModalOpen(false);
-                                        setReserveData(null);
-                                    }}
-                                    className="mb-2 cursor-pointer inline-flex w-full justify-center rounded-md bg-gray-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto"
-                                    type="button"
-                                    >
-                                    Cancel
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-            {/* Reservation receipt */}
-            {receiptModalOpen && receiptData && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-                    <div className="relative w-full max-w-md bg-gradient-to-br from-white via-gray-100 to-white rounded-2xl shadow-2xl border border-gray-300 p-8">
-                        {/* Close Button */}
-                        <button
-                            onClick={() => setReceiptModalOpen(false)}
-                            className="absolute top-4 right-4 text-gray-400 hover:text-orange-500 transition-colors cursor-pointer"
-                            aria-label="Close"
-                        >
-                            <CircleX size={24} />
-                        </button>
-                        {/* Receipt Header */}
-                        <div className="text-center mb-6">
-                            <h2 className="text-2xl font-bold text-gray-800">Reservation Receipt</h2>
-                            <span className="block text-sm text-gray-500">Thank you for reserving!</span>
-                        </div>
-                        {/* Receipt Details */}
-                        <div className="space-y-4 text-base font-mono">
-                            <div className="flex justify-between">
-                                <span className="text-gray-500">Patron ID:</span>
-                                <span className="font-semibold text-gray-800">{receiptData.patron_id}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-500">Biblio ID:</span>
-                                <span className="font-semibold text-gray-800">{receiptData.biblio_id}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-500">Item ID:</span>
-                                <span className="font-semibold text-gray-800">{receiptData.item_id}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-500">Hold Date:</span>
-                                <span className="font-semibold text-gray-800">{receiptData.hold_date}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-500">Hold ID:</span>
-                                <span className="font-semibold text-gray-800">{receiptData.hold_id}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-500">Pickup Library:</span>
-                                <span className="font-bold text-orange-600 bg-orange-100 px-2 py-1 rounded">{receiptData.pickup_library_id}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-500">Priority:</span>
-                                <span className="font-bold text-purple-700 bg-purple-100 px-2 py-1 rounded">{receiptData.priority}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-500">Status:</span>
-                                <span className="font-semibold text-gray-800">{receiptData.status ?? "Pending"}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-500">Timestamp:</span>
-                                <span className="font-semibold text-gray-800">{receiptData.timestamp?.replace("T", " ").replace("+08:00", "")}</span>
-                            </div>
-                        </div>
-                        {/* Divider */}
-                        <div className="mt-6 border-t border-gray-300 pt-4 text-center text-xs text-gray-400">
-                            <span>Keep this receipt for your records.</span>
-                        </div>
-                    </div>
-                </div>
-            )}
-            {/* Logout Modal */}
-            {logoutModalOpen && (
-                <div className="border absolute h-screen bg-black/50 z-100 w-screen overflow-y-auto">
-                    <div
-                        className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0"
-                    >
-                        <div
-                        className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg"
-                        >
-                        <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
-                            <div className="sm:flex sm:items-start">
-                            <div
-                                className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10"
-                            >
-                                <svg
-                                aria-hidden="true"
-                                stroke="currentColor"
-                                stroke-width="1.5"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                className="h-6 w-6 text-red-600"
-                                >
-                                <path
-                                    d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
-                                    stroke-linejoin="round"
-                                    stroke-linecap="round"
-                                ></path>
-                                </svg>
-                            </div>
-                            <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
-                                <h3
-                                id="modal-title"
-                                className="text-base font-semibold leading-6 text-gray-900"
-                                >
-                                Logout account
-                                </h3>
-                                <div className="mt-2">
-                                <p className="text-sm text-gray-500">
-                                    Are you sure you want to logout your account? All of your
-                                    unsaved data will be removed. This action cannot be undone.
-                                </p>
+                                <div className="bg-gray-900 border-t border-gray-800 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                                    <button
+                                        onClick={() => {
+                                            handleReserve();
+                                        }}
+                                        className="mb-2 cursor-pointer inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto"
+                                        type="button"
+                                        >
+                                        {t("continue")}
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setReserveModalOpen(false);
+                                            setReserveData(null);
+                                        }}
+                                        className="mb-2 cursor-pointer inline-flex w-full justify-center rounded-md bg-gray-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto"
+                                        type="button"
+                                        >
+                                        {t("cancel")}
+                                    </button>
                                 </div>
                             </div>
-                            </div>
                         </div>
-                        <div className="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                    </div>
+                )}
+                {/* Reservation receipt */}
+                {receiptModalOpen && receiptData && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                        <div className="relative w-full max-w-md bg-gradient-to-br from-white via-gray-100 to-white rounded-2xl shadow-2xl border border-gray-300 p-8">
+                            {/* Close Button */}
                             <button
+                                onClick={() => setReceiptModalOpen(false)}
+                                className="absolute top-4 right-4 text-gray-400 hover:text-orange-500 transition-colors cursor-pointer"
+                                aria-label="Close"
+                            >
+                                <CircleX size={24} />
+                            </button>
+                            {/* Receipt Header */}
+                            <div className="text-center mb-6">
+                                <h2 className="text-2xl font-bold text-gray-800">Reservation Receipt</h2>
+                                <span className="block text-sm text-gray-500">Thank you for reserving!</span>
+                            </div>
+                            {/* Receipt Details */}
+                            <div className="space-y-4 text-base font-mono">
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Patron ID:</span>
+                                    <span className="font-semibold text-gray-800">{receiptData.patron_id}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Biblio ID:</span>
+                                    <span className="font-semibold text-gray-800">{receiptData.biblio_id}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Item ID:</span>
+                                    <span className="font-semibold text-gray-800">{receiptData.item_id}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Hold Date:</span>
+                                    <span className="font-semibold text-gray-800">{receiptData.hold_date}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Hold ID:</span>
+                                    <span className="font-semibold text-gray-800">{receiptData.hold_id}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Pickup Library:</span>
+                                    <span className="font-bold text-orange-600 bg-orange-100 px-2 py-1 rounded">{receiptData.pickup_library_id}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Priority:</span>
+                                    <span className="font-bold text-purple-700 bg-purple-100 px-2 py-1 rounded">{receiptData.priority}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Status:</span>
+                                    <span className="font-semibold text-gray-800">{receiptData.status ?? "Pending"}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Timestamp:</span>
+                                    <span className="font-semibold text-gray-800">{receiptData.timestamp?.replace("T", " ").replace("+08:00", "")}</span>
+                                </div>
+                            </div>
+                            {/* Divider */}
+                            <div className="mt-6 border-t border-gray-300 pt-4 text-center text-xs text-gray-400">
+                                <span>Keep this receipt for your records.</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                {/* Logout Modal */}
+                {logoutModalOpen && (
+                    <div className="border absolute h-screen bg-black/50 z-100 w-screen overflow-y-auto">
+                        <div
+                            className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0"
+                        >
+                            <div
+                            className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg"
+                            >
+                            <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                                <div className="sm:flex sm:items-start">
+                                <div
+                                    className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10"
+                                >
+                                    <svg
+                                    aria-hidden="true"
+                                    stroke="currentColor"
+                                    stroke-width="1.5"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    className="h-6 w-6 text-red-600"
+                                    >
+                                    <path
+                                        d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+                                        stroke-linejoin="round"
+                                        stroke-linecap="round"
+                                    ></path>
+                                    </svg>
+                                </div>
+                                <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
+                                    <h3
+                                    id="modal-title"
+                                    className="text-base font-semibold leading-6 text-gray-900"
+                                    >
+                                    {t("logout_account")}
+                                    </h3>
+                                    <div className="mt-2">
+                                    <p className="text-sm text-gray-500">
+                                        {t("are_you_sure_you_want_to_logout_your_account_all_of_your_unsaved_data_will_be_lost_this_action_cannot_be_undone")}
+                                    </p>
+                                    </div>
+                                </div>
+                                </div>
+                            </div>
+                            <div className="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                                <button
+                                    onClick={() => {
+                                        setLogoutModalOpen(false);
+                                        setIsLoadingOpen(true);
+                                        setTimeout(() => {
+                                            localStorage.clear();
+                                            // render loading
+                                            router.push("/");
+                                        }, 5000);
+                                    }}
+                                    className="cursor-pointer inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto"
+                                    type="button"
+                                    >
+                                    {t("logout")}
+                                </button>
+                                <button
                                 onClick={() => {
-                                    setLogoutModalOpen(false);
-                                    setIsLoadingOpen(true);
-                                    setTimeout(() => {
-                                        localStorage.clear();
-                                        // render loading
-                                        router.push("/");
-                                    }, 5000);
-                                }}
-                                className="cursor-pointer inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto"
+                                        setLogoutModalOpen(false);
+                                    }}
+                                className="cursor-pointer mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
                                 type="button"
                                 >
-                                Logout
-                            </button>
-                            <button
-                            onClick={() => {
-                                    setLogoutModalOpen(false);
-                                }}
-                            className="cursor-pointer mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
-                            type="button"
-                            >
-                            Cancel
-                            </button>
-                        </div>
-                        </div>
-                    </div>
-                    </div>
-
-            )}
-            {loadingOpen && (
-                <div className="z-999 absolute flex-col gap-4 w-full flex items-center justify-center bg-black/50 h-screen">
-                    <div
-                        className="w-20 h-20 border-4 border-transparent text-blue-400 text-4xl animate-spin flex items-center justify-center border-t-blue-400 rounded-full"
-                    >
-                        <div className="w-16 h-16 border-4 border-transparent text-red-400 text-2xl animate-spin flex items-center justify-center border-t-red-400 rounded-full"
-                        ></div>
-                    </div>
-                </div>
-            )}
-            {/* Show All Modal */}
-            {showAllModalOpen && showAllBooks && (
-                <div className="fixed inset-0 z-15 flex items-center justify-center bg-black/40 backdrop-blur-sm p-2">
-                    <div className="relative w-full max-w-2xl bg-gradient-to-br from-slate-800 via-blue-900/90 to-slate-700 text-white  shadow-2xl ring-1 ring-orange-400/30 border border-orange-300/20 p-6 sm:p-8 overflow-y-auto max-h-[90vh]">
-                        {/* Close Button */}
-                        <button
-                            onClick={() => setShowAllModalOpen(false)}
-                            className="fixed top-4 right-4 text-slate-400 hover:text-orange-400 transition-colors cursor-pointer"
-                            aria-label="Close"
-                        >
-                            <CircleX size={24} />
-                        </button>
-                        <h2 className="text-2xl font-bold mb-4 text-orange-300">All Results</h2>
-                        {showAllBooks.length === 0 ? (
-                            <div className="text-center py-10 text-red-400 font-semibold text-lg">
-                                No books found.
-                            </div>
-                        ) : (
-                            <div className="space-y-6">
-                                {showAllBooks.map((book, bIdx) => (
-                                    <div key={bIdx} className="w-full p-4 space-y-3 bg-gradient-to-r from-slate-700/80 to-slate-600/80 rounded-xl shadow-md border-l-4 border-orange-500/100 text-white mb-2">
-                                        <div className="flex gap-2 h-12 justify-between items-center">
-                                            <h1 className="text-lg font-bold w-3/4 line-clamp-2">
-                                                {book.title.length > 60 ? `${book.title.substring(0, 57)}...` : book.title}
-                                            </h1>
-                                            <span className={`text-sm text-center font-semibold ${book.quantity_available > 0 ? 'bg-green-500' : 'bg-red-400'} text-white px-3 py-1 rounded-full`}>
-                                                {book.quantity_available} AVAILABLE
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between text-gray-300 text-sm">
-                                            <div>
-                                                <span className="block text-white/50">Author</span>
-                                                <span className="font-semibold">{book.author}</span>
-                                            </div>
-                                            <div>
-                                                <span className="block text-white/50">Year</span>
-                                                <span className="font-semibold">{book.year}</span>
-                                            </div>
-                                        </div>
-                                        <div className="border border-gray-200 rounded-md px-4 py-3 bg-gray-50 text-sm text-black">
-                                            <div className="flex justify-between gap-2">
-                                                <span className="text-gray-500 w-1/2">Publisher</span>
-                                                <span className="font-medium w-1/2">{book.publisher}</span>
-                                            </div>
-                                            <hr className="border-gray-300 w-full my-3" />
-                                            <div className="flex justify-between mt-1 gap-2">
-                                                <span className="text-gray-500 w-1/2">ISBN</span>
-                                                <span className="w-1/2">{book.isbn}</span>
-                                            </div>
-                                            <hr className="border-gray-300 w-full my-3" />
-                                            <div className="flex justify-between mt-1 gap-2">
-                                                <span className="text-gray-500 w-1/2">Biblio ID</span>
-                                                <span className="w-1/2">{book.biblio_id}</span>
-                                            </div>
-                                        </div>
-                                        <div className="flex gap-4">
-                                            <button
-                                                className="cursor-pointer flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-md font-medium text-sm"
-                                                onClick={() => {
-                                                    setReserveData({
-                                                        // patron_id: localStorage.getItem("patron_id") ? Number(localStorage.getItem("patron_id")) : 0,
-                                                        patron_id: patronId ? Number(patronId) : 0,
-                                                        book_title: book.title,
-                                                        biblio_id: book.biblio_id,
-                                                    });
-                                                    setReserveModalOpen(true);
-                                                    // setShowAllModalOpen(false);
-                                                }}
-                                            >
-                                                📚 Reserve Book
-                                            </button>
-                                            <button
-                                                className="cursor-pointer flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-md font-medium text-sm"
-                                                onClick={() => {
-                                                    handleMoreInfo(book.biblio_id);
-                                                    // setShowAllModalOpen(false);
-                                                }}
-                                            >
-                                                🧾 More Info
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
-            {/* Voice Modal */}
-            {voiceModal && (
-                <AnimatePresence>
-                    <div className="flex w-full flex-col fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-5 ">
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.2, y: 100,  }}
-                            animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 40 }}
-                            transition={{ duration: 0.35, ease: "easeOut" }}
-                            className="max-h-190 overflow-y-auto rounded-lg bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10 border border-gray-800 rounded-b-none text-left shadow-xl transition-all  sm:w-full sm:max-w-lg rounded-xl shadow-lg p-8 max-w-md w-full text-center relative">
-                            {/* <div className="fixed flex h-80 flex-col w-full border border-gray-100 bg-white"> */}
-                                <button className="absolute top-4 right-4 text-gray-400 hover:text-orange-500 cursor-pointer"
-                                    onClick={() => {
-                                        stopListening();
-                                        setVoiceModal(false);
-                                        setVoiceError(null);
-                                        setVoiceTranscript("");
-                                        setVoiceAnswer(null);
-                                        setVoiceLoading(false);
-                                        setVoicePage(1);
-                                    }}
-                                >
-                                    <CircleX size={24} />
+                                {t("cancel")}
                                 </button>
-                                <h2 className="mt-2 text-3xl text-center font-bold mb-4 text-orange-600">Speech Recognition</h2>
-                                <p className="mb-4 text-sm text-white/70 text-center">Speak your message and it will be transcribed below. </p>
-                                {voiceLoading && (
-                                    <div className="text-gray-500 flex justify-center mb-4">
-                                        <div className="animate-pulse flex flex-col items-center gap-4 w-60">
-                                        <div>
-                                            <div className="w-48 h-6 bg-slate-400 rounded-md"></div>
-                                            <div className="w-28 h-4 bg-slate-400 mx-auto mt-3 rounded-md"></div>
-                                        </div>
-                                        <div className="h-7 bg-slate-400 w-full rounded-md"></div>
-                                        <div className="h-7 bg-slate-400 w-full rounded-md"></div>
-                                        <div className="h-7 bg-slate-400 w-full rounded-md"></div>
-                                        <div className="h-7 bg-slate-400 w-1/2 rounded-md"></div>
-                                        </div>
-                                    </div>
-                                )}
-                                {voiceAnswer && (
-                                    <div className="mt-4 text-left">
-                                        <AnimatePresence>
-                                            {voiceAnswer.type === "booksearch" && (
-                                                <motion.div
-                                                    key="voice-booksearch"
-                                                    initial={{ opacity: 0, y: 30 }}
-                                                    animate={{ opacity: 1, y: 0 }}
-                                                    exit={{ opacity: 0, y: 30 }}
-                                                    transition={{ duration: 0.4, ease: "easeOut" }}
-                                                    className="rounded-lg p-4 bg-slate-100/10"
-                                                >
-                                                    {/* <div className="bg-slate-100 rounded-lg p-4 text-gray-800 mb-2">
-                                                        {voiceAnswer.message}
-                                                    </div> */}
-                                                    {voiceCurrentBooks.map((book: any, idx: number) => (
-                                                        <div key={idx} className="w-full p-4 space-y-3 bg-gradient-to-r from-slate-700/80 to-slate-600/80 rounded-xl shadow-md border-l-4 border-orange-500/100 text-white mb-2">
-                                                            <div className="flex gap-2 h-12 justify-between items-center">
-                                                                <h1 className="text-lg font-bold w-3/4 line-clamp-2">
-                                                                    {book.title.length > 60 ? `${book.title.substring(0, 57)}...` : book.title}
-                                                                </h1>
-                                                                <span className={`text-sm  text-center font-semibold ${book.quantity_available > 0 ? 'bg-green-500' : 'bg-red-400'} text-white px-3 py-1 rounded-full`}>
-                                                                    <Tooltip title={`Available: ${book.quantity_available}`}>
-                                                                        <IconButton size="small" sx={{ color: 'white' }}>
-                                                                            <InfoIcon fontSize="small" />
-                                                                        </IconButton>
-                                                                    </Tooltip>
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex justify-between text-gray-300 text-sm">
-                                                                <div>
-                                                                    <span className="block text-white/50">Author</span>
-                                                                    <span className="font-semibold">{book.author}</span>
-                                                                </div>
-                                                                <div>
-                                                                    <span className="block text-white/50">Year</span>
-                                                                    <span className="font-semibold">{book.year}</span>
-                                                                </div>
-                                                            </div>
-                                                            <div className="border border-gray-200 rounded-md px-4 py-3 bg-gray-50 text-sm text-black">
-                                                                <div className="flex justify-between gap-2">
-                                                                    <span className="text-gray-500 w-1/2">Publisher</span>
-                                                                    <span className="font-medium w-1/2">{book.publisher}</span>
-                                                                </div>
-                                                                <hr className="border-gray-300 w-full my-3" />
-                                                                <div className="flex justify-between mt-1 gap-2">
-                                                                    <span className="text-gray-500 w-1/2">ISBN</span>
-                                                                    <span className="w-1/2">{book.isbn}</span>
-                                                                </div>
-                                                                <hr className="border-gray-300 w-full my-3" />
-                                                                <div className="flex justify-between mt-1 gap-2">
-                                                                    <span className="text-gray-500 w-1/2">Biblio ID</span>
-                                                                    <span className="w-1/2">{book.biblio_id}</span>
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex gap-2 mt-2">
-                                                                <button
-                                                                    className="cursor-pointer px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-                                                                    onClick={() => handleMoreInfo(book.biblio_id)}
-                                                                >
-                                                                    More Info
-                                                                </button>
-                                                                <button
-                                                                    className="cursor-pointer px-3 py-1 bg-orange-500 text-white rounded hover:bg-orange-600"
-                                                                    onClick={() => {
-                                                                        setReserveData({
-                                                                            patron_id: patronId ? Number(patronId) : 0,
-                                                                            biblio_id: book.biblio_id,
-                                                                            book_title: book.title,
-                                                                        });
-                                                                        setReserveModalOpen(true);
-                                                                    }}
-                                                                >
-                                                                    Reserve Book
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                    {/* Pagination Controls */}
-                                                    {voiceTotalPages > 1 && (
-                                                        <div className="flex justify-center items-center gap-2 mt-4">
-                                                            <button
-                                                                className="cursor-pointer px-2 py-1 rounded bg-gray-300 hover:bg-gray-400"
-                                                                disabled={voicePage === 1}
-                                                                onClick={() => setVoicePage(voicePage - 1)}
-                                                            >
-                                                                ←
-                                                            </button>
-                                                            <span className="text-[10px] text-white/70">
-                                                                {voicePage} of {voiceTotalPages}
-                                                            </span>
-                                                            <button
-                                                                className="cursor-pointer px-2 py-1 rounded bg-gray-300 hover:bg-gray-400"
-                                                                disabled={voicePage === voiceTotalPages}
-                                                                onClick={() => setVoicePage(voicePage + 1)}
-                                                            >
-                                                                →
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
-                                )}
-                                {voiceError && <div className="text-red-500 text-center mb-2">{voiceError}</div>}
-                    
-                                <div className="mt-3 sticky bottom-0 px-3 flex justify-center">
-                                    <button className="relative flex items-center justify-center cursor-pointer"
-                                        onClick={isListening ? stopListening : startListening}
-                                        disabled={voiceLoading || isSpeaking}
-                                        aria-label={isListening ? "Stop Listening" : "Start Listening"}
-                                        >
-                                        {/* Centered text */}
-                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                                            {isSpeaking ? (
-                                                <MicOff size={36} color="#ffffff" className="pointer-events-none animate-pulse" />
-                                            ) : (
-                                                <Mic size={36} color="#ffffff" />
-                                            )}
-                                        </div>
-                                        {/* Blob background */}
-                                        <div
-                                            className={`w-24 h-24 rounded-full transition-all duration-300 ${
-                                                isListening ? "bg-red-500 animate-blob-pulse" : "bg-orange-500"
-                                            }`}
-                                            style={{
-                                                boxShadow: isListening
-                                                    ? "0 0 40px 10px rgba(255, 0, 0, 0.3)"
-                                                    : "0 0 20px 4px rgba(255, 140, 0, 0.2)",
-                                                position: "relative",
-                                                overflow: "hidden",
-                                            }}
-                                        ></div>
-                                    </button>
-                                </div>
-                        </motion.div>
-                        <div className="border border-white/10 bg-gray-900 h-10 rounded-lg rounded-t-none text-left shadow-xl transition-all  sm:w-full sm:max-w-lg rounded-xl shadow-lg p-5 max-w-md w-full text-center relative">
+                            </div>
+                            </div>
+                        </div>
+                        </div>
+
+                )}
+                {loadingOpen && (
+                    <div className="z-999 absolute flex-col gap-4 w-full flex items-center justify-center bg-black/50 h-screen">
+                        <div
+                            className="w-20 h-20 border-4 border-transparent text-blue-400 text-4xl animate-spin flex items-center justify-center border-t-blue-400 rounded-full"
+                        >
+                            <div className="w-16 h-16 border-4 border-transparent text-red-400 text-2xl animate-spin flex items-center justify-center border-t-red-400 rounded-full"
+                            ></div>
                         </div>
                     </div>
-                </AnimatePresence>
-            )}
-            {/* Toast */}
-            <ToastContainer/>
+                )}
+                {/* Show All Modal */}
+                {showAllModalOpen && showAllBooks && (
+                    <div className="fixed inset-0 z-15 flex items-center justify-center bg-black/40 backdrop-blur-sm p-2">
+                        <div className="relative w-full max-w-2xl bg-gradient-to-br from-slate-800 via-blue-900/90 to-slate-700 text-white  shadow-2xl ring-1 ring-orange-400/30 border border-orange-300/20 p-6 sm:p-8 overflow-y-auto max-h-[90vh]">
+                            {/* Close Button */}
+                            <button
+                                onClick={() => setShowAllModalOpen(false)}
+                                className="fixed top-4 right-4 text-slate-400 hover:text-orange-400 transition-colors cursor-pointer"
+                                aria-label="Close"
+                            >
+                                <CircleX size={24} />
+                            </button>
+                            <h2 className="text-2xl font-bold mb-4 text-orange-300"></h2>
+                            {showAllBooks.length === 0 ? (
+                                <div className="text-center py-10 text-red-400 font-semibold text-lg">
+                                    {t("no_books_found")}
+                                </div>
+                            ) : (
+                                <div className="space-y-6">
+                                    {showAllBooks.map((book, bIdx) => (
+                                        <div key={bIdx} className="w-full p-4 space-y-3 bg-gradient-to-r from-slate-700/80 to-slate-600/80 rounded-xl shadow-md border-l-4 border-orange-500/100 text-white mb-2">
+                                            <div className="flex gap-2 h-12 justify-between items-center">
+                                                <h1 className="text-lg font-bold w-3/4 line-clamp-2">
+                                                    {book.title.length > 60 ? `${book.title.substring(0, 57)}...` : book.title}
+                                                </h1>
+                                                <span className={`text-sm text-center font-semibold ${book.quantity_available > 0 ? 'bg-green-500' : 'bg-red-400'} text-white px-3 py-1 rounded-full`}>
+                                                    {book.quantity_available} {t("available")}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between text-gray-300 text-sm">
+                                                <div>
+                                                    <span className="block text-white/50">Author</span>
+                                                    <span className="font-semibold">{book.author}</span>
+                                                </div>
+                                                <div>
+                                                    <span className="block text-white/50">Year</span>
+                                                    <span className="font-semibold">{book.year}</span>
+                                                </div>
+                                            </div>
+                                            <div className="border border-gray-200 rounded-md px-4 py-3 bg-gray-50 text-sm text-black">
+                                                <div className="flex justify-between gap-2">
+                                                    <span className="text-gray-500 w-1/2">Publisher</span>
+                                                    <span className="font-medium w-1/2">{book.publisher}</span>
+                                                </div>
+                                                <hr className="border-gray-300 w-full my-3" />
+                                                <div className="flex justify-between mt-1 gap-2">
+                                                    <span className="text-gray-500 w-1/2">ISBN</span>
+                                                    <span className="w-1/2">{book.isbn}</span>
+                                                </div>
+                                                <hr className="border-gray-300 w-full my-3" />
+                                                <div className="flex justify-between mt-1 gap-2">
+                                                    <span className="text-gray-500 w-1/2">Biblio ID</span>
+                                                    <span className="w-1/2">{book.biblio_id}</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-4">
+                                                <button
+                                                    className="cursor-pointer flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-md font-medium text-sm"
+                                                    onClick={() => {
+                                                        setReserveData({
+                                                            // patron_id: localStorage.getItem("patron_id") ? Number(localStorage.getItem("patron_id")) : 0,
+                                                            patron_id: patronId ? Number(patronId) : 0,
+                                                            book_title: book.title,
+                                                            biblio_id: book.biblio_id,
+                                                        });
+                                                        setReserveModalOpen(true);
+                                                        // setShowAllModalOpen(false);
+                                                    }}
+                                                >
+                                                    📚 {t("reserve_book")}
+                                                </button>
+                                                <button
+                                                    className="cursor-pointer flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-md font-medium text-sm"
+                                                    onClick={() => {
+                                                        handleMoreInfo(book.biblio_id);
+                                                        // setShowAllModalOpen(false);
+                                                    }}
+                                                >
+                                                    🧾 {t("more_info")}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+                {/* Voice Modal */}
+                {voiceModal && (
+                    <AnimatePresence>
+                        <div className="flex w-full flex-col fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-5 ">
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.2, y: 100,  }}
+                                animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: 40 }}
+                                transition={{ duration: 0.35, ease: "easeOut" }}
+                                className="max-h-190 overflow-y-auto rounded-lg bg-clip-padding backdrop-filter backdrop-blur-sm bg-opacity-10 border border-gray-800 rounded-b-none text-left shadow-xl transition-all  sm:w-full sm:max-w-lg rounded-xl shadow-lg p-8 max-w-md w-full text-center relative">
+                                {/* <div className="fixed flex h-80 flex-col w-full border border-gray-100 bg-white"> */}
+                                    <button className="absolute top-4 right-4 text-gray-400 hover:text-orange-500 cursor-pointer"
+                                        onClick={() => {
+                                            stopListening();
+                                            setVoiceModal(false);
+                                            setVoiceError(null);
+                                            setVoiceTranscript("");
+                                            setVoiceAnswer(null);
+                                            setVoiceLoading(false);
+                                            setVoicePage(1);
+                                        }}
+                                    >
+                                        <CircleX size={24} />
+                                    </button>
+                                    <h2 className="mt-2 text-3xl text-center font-bold mb-4 text-orange-600">{t("speech_recognition")}</h2>
+                                    <p className="mb-4 text-sm text-white/70 text-center">{t("speak_your_message_and_it_will_be_transcribed_below")}</p>
+                                    {voiceLoading && (
+                                        <div className="text-gray-500 flex justify-center mb-4">
+                                            <div className="animate-pulse flex flex-col items-center gap-4 w-60">
+                                            <div>
+                                                <div className="w-48 h-6 bg-slate-400 rounded-md"></div>
+                                                <div className="w-28 h-4 bg-slate-400 mx-auto mt-3 rounded-md"></div>
+                                            </div>
+                                            <div className="h-7 bg-slate-400 w-full rounded-md"></div>
+                                            <div className="h-7 bg-slate-400 w-full rounded-md"></div>
+                                            <div className="h-7 bg-slate-400 w-full rounded-md"></div>
+                                            <div className="h-7 bg-slate-400 w-1/2 rounded-md"></div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {voiceAnswer && (
+                                        <div className="mt-4 text-left">
+                                            <AnimatePresence>
+                                                {voiceAnswer.type === "booksearch" && (
+                                                    <motion.div
+                                                        key="voice-booksearch"
+                                                        initial={{ opacity: 0, y: 30 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: 30 }}
+                                                        transition={{ duration: 0.4, ease: "easeOut" }}
+                                                        className="rounded-lg p-4 bg-slate-100/10"
+                                                    >
+                                                        {/* <div className="bg-slate-100 rounded-lg p-4 text-gray-800 mb-2">
+                                                            {voiceAnswer.message}
+                                                        </div> */}
+                                                        {voiceCurrentBooks.map((book: any, idx: number) => (
+                                                            <div key={idx} className="w-full p-4 space-y-3 bg-gradient-to-r from-slate-700/80 to-slate-600/80 rounded-xl shadow-md border-l-4 border-orange-500/100 text-white mb-2">
+                                                                <div className="flex gap-2 h-12 justify-between items-center">
+                                                                    <h1 className="text-lg font-bold w-3/4 line-clamp-2">
+                                                                        {book.title.length > 60 ? `${book.title.substring(0, 57)}...` : book.title}
+                                                                    </h1>
+                                                                    <span className={`text-sm  text-center font-semibold ${book.quantity_available > 0 ? 'bg-green-500' : 'bg-red-400'} text-white px-3 py-1 rounded-full`}>
+                                                                        <Tooltip title={`Available: ${book.quantity_available}`}>
+                                                                            <IconButton size="small" sx={{ color: 'white' }}>
+                                                                                <InfoIcon fontSize="small" />
+                                                                            </IconButton>
+                                                                        </Tooltip>
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex justify-between text-gray-300 text-sm">
+                                                                    <div>
+                                                                        <span className="block text-white/50">{t("author")}</span>
+                                                                        <span className="font-semibold">{book.author}</span>
+                                                                    </div>
+                                                                    <div>
+                                                                        <span className="block text-white/50">{t("year")}</span>
+                                                                        <span className="font-semibold">{book.year}</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="border border-gray-200 rounded-md px-4 py-3 bg-gray-50 text-sm text-black">
+                                                                    <div className="flex justify-between gap-2">
+                                                                        <span className="text-gray-500 w-1/2">{t("publisher")}</span>
+                                                                        <span className="font-medium w-1/2">{book.publisher}</span>
+                                                                    </div>
+                                                                    <hr className="border-gray-300 w-full my-3" />
+                                                                    <div className="flex justify-between mt-1 gap-2">
+                                                                        <span className="text-gray-500 w-1/2">{t("isbn")}</span>
+                                                                        <span className="w-1/2">{book.isbn}</span>
+                                                                    </div>
+                                                                    <hr className="border-gray-300 w-full my-3" />
+                                                                    <div className="flex justify-between mt-1 gap-2">
+                                                                        <span className="text-gray-500 w-1/2">{t("biblio_id")}</span>
+                                                                        <span className="w-1/2">{book.biblio_id}</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex gap-2 mt-2">
+                                                                    <button
+                                                                        className="cursor-pointer px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                                                        onClick={() => handleMoreInfo(book.biblio_id)}
+                                                                    >
+                                                                        {t("more_info")}
+                                                                    </button>
+                                                                    <button
+                                                                        className="cursor-pointer px-3 py-1 bg-orange-500 text-white rounded hover:bg-orange-600"
+                                                                        onClick={() => {
+                                                                            setReserveData({
+                                                                                patron_id: patronId ? Number(patronId) : 0,
+                                                                                biblio_id: book.biblio_id,
+                                                                                book_title: book.title,
+                                                                            });
+                                                                            setReserveModalOpen(true);
+                                                                        }}
+                                                                    >
+                                                                        {t("reserve_book")}
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                        {/* Pagination Controls */}
+                                                        {voiceTotalPages > 1 && (
+                                                            <div className="flex justify-center items-center gap-2 mt-4">
+                                                                <button
+                                                                    className="cursor-pointer px-2 py-1 rounded bg-gray-300 hover:bg-gray-400"
+                                                                    disabled={voicePage === 1}
+                                                                    onClick={() => setVoicePage(voicePage - 1)}
+                                                                >
+                                                                    ←
+                                                                </button>
+                                                                <span className="text-[10px] text-white/70">
+                                                                    {voicePage} of {voiceTotalPages}
+                                                                </span>
+                                                                <button
+                                                                    className="cursor-pointer px-2 py-1 rounded bg-gray-300 hover:bg-gray-400"
+                                                                    disabled={voicePage === voiceTotalPages}
+                                                                    onClick={() => setVoicePage(voicePage + 1)}
+                                                                >
+                                                                    →
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
+                                    )}
+                                    {voiceError && <div className="text-red-500 text-center mb-2">{voiceError}</div>}
+                        
+                                    <div className="mt-3 sticky bottom-0 px-3 flex justify-center">
+                                        <button className="relative flex items-center justify-center cursor-pointer"
+                                            onClick={isListening ? stopListening : startListening}
+                                            disabled={voiceLoading || isSpeaking}
+                                            aria-label={isListening ? `${t("stop_listening")}` : `${t("start_listening")}`}
+                                            >
+                                            {/* Centered text */}
+                                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                                                {isSpeaking ? (
+                                                    <MicOff size={36} color="#ffffff" className="pointer-events-none animate-pulse" />
+                                                ) : (
+                                                    <Mic size={36} color="#ffffff" />
+                                                )}
+                                            </div>
+                                            {/* Blob background */}
+                                            <div
+                                                className={`w-24 h-24 rounded-full transition-all duration-300 ${
+                                                    isListening ? "bg-red-500 animate-blob-pulse" : "bg-orange-500"
+                                                }`}
+                                                style={{
+                                                    boxShadow: isListening
+                                                        ? "0 0 40px 10px rgba(255, 0, 0, 0.3)"
+                                                        : "0 0 20px 4px rgba(255, 140, 0, 0.2)",
+                                                    position: "relative",
+                                                    overflow: "hidden",
+                                                }}
+                                            ></div>
+                                        </button>
+                                    </div>
+                            </motion.div>
+                            <div className="border border-white/10 bg-gray-900 h-10 rounded-lg rounded-t-none text-left shadow-xl transition-all  sm:w-full sm:max-w-lg rounded-xl shadow-lg p-5 max-w-md w-full text-center relative">
+                            </div>
+                        </div>
+                    </AnimatePresence>
+                )}
+                {/* Toast */}
+                <ToastContainer/>
 
-        </div>
+            </div>
+        </I18nextProvider>
     );
 }
 

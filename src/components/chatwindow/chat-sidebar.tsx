@@ -7,6 +7,10 @@ import { AnimatePresence, motion } from "framer-motion";
 import axios from "axios"; // Add this import
 import { ToastContainer, toast } from 'react-toastify';
 import { Dialog } from "@headlessui/react"; // Add this import (or use any modal library)
+import i18n from "@/i18n";
+import { useTranslation } from "react-i18next";
+import { I18nextProvider } from "react-i18next"; 
+
 
 export default function ChatSidebar({
     onSidebarToggle,
@@ -19,6 +23,9 @@ export default function ChatSidebar({
     onSelectChat: (messages: any[], sessionId: number | null, chatName: string | null) => void,
     onNewChat: () => void,
 }) {
+
+    const { t } = useTranslation();
+
     const [searchQuery, setSearchQuery] = useState("")
     const [selectedChat, setSelectedChat] = useState<number | null>(1)
     const [isGuest, setIsGuest] = useState<boolean>(false);
@@ -33,6 +40,15 @@ export default function ChatSidebar({
 
     // BACKEND URL
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+
+
+    useEffect(() => {
+        const savedLang = localStorage.getItem("appLanguage");
+        if (savedLang && savedLang !== i18n.language) {
+            i18n.changeLanguage(savedLang);
+        }
+    }, []);
+
 
     useEffect(() => {
         const storedPatronId = localStorage.getItem('patron_id');
@@ -163,11 +179,12 @@ export default function ChatSidebar({
     };
     // const [sidebarOpen, setSidebarOpen] = useState(true);
     return (
+        <I18nextProvider i18n={i18n}>
         <div className="w-80 h-screen bg-[rgba(26,30,44,1)] flex flex-col z-99 absolute md:relative ">
             <div className="flex-1 flex flex-col">
                 {/* LOGO */}
                 <div className="select-none flex justify-between items-center p-5.5 bg-gradient-to-r from-slate-900/50 to-slate-800/50 border-b border-white/5 bg-[rgba(26,30,44,1)]">
-                    <h1 className="text-2xl font-bold text-white text-center">AI Librarian  </h1>
+                    <h1 className="text-2xl font-bold text-white text-center">{t("ai_librarian_logo")}</h1>
                     <PanelLeftIcon
                         className="md:hidden lg:hidden"
                         style={{ color: "white", cursor: "pointer" }}
@@ -184,19 +201,19 @@ export default function ChatSidebar({
                         }}
                     >
                         <MessageSquarePlus className="h-4 w-4" />
-                        New Chat
+                        {t("new_chat")}
                     </button>
                 </div>
                 {/* SEARCH */}
                 <div className="bg-[rgba(26,30,44,1)] flex min-h-0 flex-col gap-2 overflow-auto">
                     <label className="text-sidebar-foreground/70 ring-sidebar-ring flex shrink-0 items-center rounded-md px-2 text-xs font-medium outline-hidden text-[#bdb4b4f7]">
-                        Search Chats
+                        {t("search_chats")}
                     </label>
                     <div className="relative px-5 py-2">
                     <Search className="absolute left-7 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
                     <input
                         type="text"
-                        placeholder="Search conversations..."
+                        placeholder={t("search_conversations_placeholder")}
                         className="pl-10 bg-slate-800/50 border-slate-700/50 text-white placeholder:text-white/40 focus:border-orange-500/25 focus:ring-orange-500/20 w-full h-10 rounded-md"
                     />
                     </div>
@@ -204,11 +221,11 @@ export default function ChatSidebar({
                 {/* RECENT CHATS */}
                 <div className="bg-[rgba(13, 17, 31, 1)] flex min-h-100 md:min-h-100 lg:min-h-100  mt-2 flex-col gap-2 overflow-auto overflow-y-auto max-h-[400px]">
                     <label className="text-sidebar-foreground/70 ring-sidebar-ring flex shrink-0 items-center rounded-md px-2 text-xs font-medium outline-hidden text-[#bdb4b4f7]">
-                        Recent Chats
+                        {t("recent_chats")}
                     </label>
                     <div className="group/menu-item relative p-4 flex flex-col gap-2 ">
                         {chatHistories.length === 0 ? (
-                            <span className="text-white/40 text-xs">No chat history found.</span>
+                            <span className="text-white/40 text-xs">{t("no_chat_history_found")}</span>
                         ) : (
                             chatHistories.map((chat, idx) => (
                                 <div
@@ -326,23 +343,34 @@ export default function ChatSidebar({
             </div>
             {/* SETTINGS */}
             <div className=" bg-gradient-to-r from-slate-900/50 to-slate-800/50 border-t border-white/5 bg-[rgba(26,30,44,1)]">
+                <div className="flex w-full  items-center px-4 py-2">
+                    <label className="text-sm text-white w-full">{t("select_language")}:</label>
+                    <select
+                        className="bg-transparent text-white w-full rounded-md border-none outline-none cursor-pointer"
+                        value={i18n.language}
+                        onChange={e => {
+                            const newLocale = e.target.value;
+                            i18n.changeLanguage(newLocale);
+                            localStorage.setItem("appLanguage", newLocale);
+                        }}
+                    >
+                        <option value="en" className="text-black p-3">English</option>
+                        <option value="ja" className="text-black p-3">日本語</option>
+                    </select>
+                </div>
+                <hr className="border-white/5 w-full my-2" />
                 <button className="cursor-pointer rounded-lg flex justify-start pl-4 items-center w-full h-12 w-full gap-2  text-white  transition-all duration-300">
                     <Calendar1 className="h-4 w-4" />
-                    Events
+                    {t("events")}
                 </button>
                 <button className="cursor-pointer rounded-lg flex justify-start pl-4 items-center w-full h-12 w-full gap-2  text-white  transition-all duration-300">
                     <MegaphoneIcon className="h-4 w-4" />
-                    Forums
+                    {t("forums")}
                 </button>
                 <button className="cursor-pointer rounded-lg flex justify-start pl-4 items-center w-full h-12 w-full gap-2  text-white  transition-all duration-300">
                     <Globe2 className="h-4 w-4" />
-                    Community
+                    {t("community")}
                 </button>
-                <button className="cursor-pointer rounded-lg flex justify-start pl-4 items-center w-full h-12 w-full gap-2  text-white  transition-all duration-300">
-                    <Settings className="h-4 w-4" />
-                    Settings
-                </button>
-                
                 {/* Footer */}
                 <div className="border-t border-white/5 p-2 w-full flex justify-center">
                     <span className="text-xs text-center text-white/60">© 2025 Ntek Systems Inc</span>
@@ -356,22 +384,22 @@ export default function ChatSidebar({
                     <Dialog open={showDeleteModal} onClose={handleDeleteCancel} className="fixed inset-0 z-50 flex items-center justify-center">
                         <div className="fixed inset-0 bg-black/50" />
                         <Dialog.Panel className="bg-white rounded-lg p-6 z-50 shadow-xl">
-                            <Dialog.Title className="text-lg font-bold mb-2">Delete Chat?</Dialog.Title>
+                            <Dialog.Title className="text-lg font-bold mb-2">{t("delete_chat")}</Dialog.Title>
                             <Dialog.Description className="mb-4">
-                                Are you sure you want to delete this chat? This action cannot be undone.
+                                {t("are_you_sure_you_want_to_delete_this_chat?_this_action_cannot_be_undone")}
                             </Dialog.Description>
                             <div className="flex gap-4 justify-end">
                                 <button
                                     className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400"
                                     onClick={handleDeleteCancel}
                                 >
-                                    Cancel
+                                    {t("cancel")}
                                 </button>
                                 <button
                                     className="px-4 py-2 rounded bg-red-500 text-white hover:bg-red-600"
                                     onClick={handleDeleteConfirm}
                                 >
-                                    Delete
+                                    {t("delete")}
                                 </button>
                             </div>
                         </Dialog.Panel>
@@ -379,5 +407,6 @@ export default function ChatSidebar({
                 )}
             </AnimatePresence>
         </div>
+        </I18nextProvider>
     );
 }
