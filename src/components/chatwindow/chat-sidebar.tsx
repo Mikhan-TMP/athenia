@@ -219,7 +219,7 @@ export default function ChatSidebar({
                     </div>
                 </div>
                 {/* RECENT CHATS */}
-                <div className="bg-[rgba(13, 17, 31, 1)] flex min-h-100 md:min-h-100 lg:min-h-100  mt-2 flex-col gap-2 overflow-auto overflow-y-auto max-h-[400px]">
+                <div className="bg-[rgba(13, 17, 31, 1)] flex min-h-95 md:min-h-95 lg:min-h-95  mt-2 flex-col gap-2 overflow-auto overflow-y-auto max-h-[400px]">
                     <label className="text-sidebar-foreground/70 ring-sidebar-ring flex shrink-0 items-center rounded-md px-2 text-xs font-medium outline-hidden text-[#bdb4b4f7]">
                         {t("recent_chats")}
                     </label>
